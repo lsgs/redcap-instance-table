@@ -1,0 +1,33 @@
+{
+	"name": "Instance Table",
+
+	"namespace": "MCRI\\InstanceTable",
+
+	"authors": [
+		{
+			"name": "Luke Stevens",
+			"email": "luke.stevens@mcri.edu.au",
+			"institution": "Murdoch Children's Research Institute"
+		}
+	],
+
+	"description": "Use the action tag @INSTANCETABLE=form_name in a descriptive text field to include a table showing data from repeat instances of that form.<br>If project is longitudinal, use @INSTANCETABLE=event_name:form_name to specify the event and form (can be a repeating form or a form in a repeating event).",
+
+	"permissions": [
+            "redcap_every_page_before_render",
+            "redcap_data_entry_form_top",
+            "redcap_survey_page_top",
+            "redcap_save_record"
+	],
+
+        "enable-every-page-hooks-on-system-pages": false,
+
+	"links": {
+	},
+
+	"system-settings": [
+	],
+	
+	"project-settings": [
+	]
+}
