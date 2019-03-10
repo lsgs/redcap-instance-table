@@ -11,6 +11,7 @@ If project is longitudinal, use @INSTANCETABLE=event_name:form_name to specify t
 * Does not show table for users with no read permission to the repeating form.
 * Displays in both regular data entry and survey forms.
 * Survey view is read only with no links to the form instances.
+* Adds an entry for @INSTANCE table into the Action Tags dialog on Project Setup and Online Designer pages.
 
 ## Example 
 This example shows (on the right-hand side) a form containing three descriptive text fields utilising the @INSTANCETABLE action tag. 
