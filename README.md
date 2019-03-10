@@ -2,7 +2,7 @@
 
 Use the action tag @INSTANCETABLE=form_name in a descriptive text field to include a table showing data from repeat instances of that form.
 
-If project is longitudinal, use @INSTANCETABLE=event_name:form_name to specify the event and form (can be a repeating form or a form in a repeating event).
+If project is longitudinal, use @INSTANCETABLE=event_name:form_name to specify the event and form (can be a repeating form or a form in a repeating event). Event defaults to current event if not specified.
 
 * Add or Edit instances in popup window (View only if user has read-only permission for the repeating form).
 * Option to hide fields from table using @INSTANCETABLE_HIDE tag on the repeating field.
