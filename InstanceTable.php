@@ -2,9 +2,6 @@
 /**
  * Instance Table External Module
  * @author Luke Stevens, Murdoch Children's Research Institute
- * TODO
- * - Date and number sorting in instance tables
- * - survey form operation
  */
 namespace MCRI\InstanceTable;
 
@@ -248,7 +245,7 @@ class InstanceTable extends AbstractExternalModule
 
                         $recordData = REDCap::getData('array',$this->record,$formName.'_complete',$eventId);
                         $nextInstance = 1 + count($recordData[$this->record]['repeat_instances'][$eventId][$formKey]);
-                        $html.='<div style="position:relative;top:'.self::ADD_NEW_BTN_YSHIFT.';margin-bottom:5px;"><button type="button" class="btn btn-sm btn-success " onclick="'.self::MODULE_VARNAME.'.addNewInstance('.$this->record.','.$eventId.',\''.$formName.'\',\''.$nextInstance.'\');"><span class="fas fa-plus-circle" aria-hidden="true"></span>&nbsp;'.$this->lang['data_entry_247'].'</button></div>'; // Add new
+                        $html.='<div style="position:relative;top:'.self::ADD_NEW_BTN_YSHIFT.';margin-bottom:5px;"><button type="button" class="btn btn-sm btn-success " onclick="'.self::MODULE_VARNAME.'.addNewInstance(\''.$this->record.'\','.$eventId.',\''.$formName.'\',\''.$nextInstance.'\');"><span class="fas fa-plus-circle" aria-hidden="true"></span>&nbsp;'.$this->lang['data_entry_247'].'</button></div>'; // Add new
                 }
                 return $html;
         }
@@ -315,7 +312,7 @@ class InstanceTable extends AbstractExternalModule
                 if ($this->isSurvey) {
                         return $val;
                 } 
-                return '<a title="Open instance" href="javascript:;" onclick="'.self::MODULE_VARNAME.'.editInstance('.$record.','.$event.',\''.$form.'\','.$instance.');">'.$val.'</a>';
+                return '<a title="Open instance" href="javascript:;" onclick="'.self::MODULE_VARNAME.'.editInstance(\''.$record.'\','.$event.',\''.$form.'\','.$instance.');">'.$val.'</a>';
         }
         
         protected function makeInstanceNumDisplay($val, $record, $event, $form, $instance) {
