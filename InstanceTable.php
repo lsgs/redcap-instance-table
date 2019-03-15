@@ -244,7 +244,9 @@ class InstanceTable extends AbstractExternalModule
                                 : $formName; // repeating form  - form name key
 
                         $recordData = REDCap::getData('array',$this->record,$formName.'_complete',$eventId);
-                        $nextInstance = 1 + count($recordData[$this->record]['repeat_instances'][$eventId][$formKey]);
+                        
+                        $currentInstances = array_keys($recordData[$this->record]['repeat_instances'][$eventId][$formKey]);
+                        $nextInstance = 1 + end($currentInstances);
                         $html.='<div style="position:relative;top:'.self::ADD_NEW_BTN_YSHIFT.';margin-bottom:5px;"><button type="button" class="btn btn-sm btn-success " onclick="'.self::MODULE_VARNAME.'.addNewInstance(\''.$this->record.'\','.$eventId.',\''.$formName.'\',\''.$nextInstance.'\');"><span class="fas fa-plus-circle" aria-hidden="true"></span>&nbsp;'.$this->lang['data_entry_247'].'</button></div>'; // Add new
                 }
                 return $html;
