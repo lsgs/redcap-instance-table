@@ -531,9 +531,7 @@ var <?php echo self::MODULE_VARNAME;?> = (function(window, document, $, app_path
                         $recordData = REDCap::getData('array',$_GET['id'],$_GET['page'].'_complete',$_GET['evet_id']);
                         
                         $currentInstances = array_keys($recordData[$_GET['id']]['repeat_instances'][$_GET['event_id']][$formKey]);
-                        $nextInstance = 1 + end($currentInstances);
-                        $url = PAGE_FULL.'?pid='.$_GET['pid'].'&id='.$_GET['id'].'&event_id='.$_GET['event_id'].'&page='.$_GET['page'].'&instance='.$nextInstance.'&extmod_instance_table=1';
-                        redirect($url);
+                        $_GET['instance'] = 1 + end($currentInstances);
                 }
         }
   
