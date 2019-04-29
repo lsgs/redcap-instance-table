@@ -239,15 +239,7 @@ class InstanceTable extends AbstractExternalModule
                 $html.='</table>';
 
                 if ($canEdit) { 
-                        $formKey = ($this->Proj->isRepeatingEvent($eventId)) 
-                                ? ''     // repeating event - empty string key
-                                : $formName; // repeating form  - form name key
-
-                        $recordData = REDCap::getData('array',$this->record,$formName.'_complete',$eventId);
-                        
-                        $currentInstances = array_keys($recordData[$this->record]['repeat_instances'][$eventId][$formKey]);
-                        $nextInstance = 1 + end($currentInstances);
-                        $html.='<div style="position:relative;top:'.self::ADD_NEW_BTN_YSHIFT.';margin-bottom:5px;"><button type="button" class="btn btn-sm btn-success " onclick="'.self::MODULE_VARNAME.'.addNewInstance(\''.$this->record.'\','.$eventId.',\''.$formName.'\',\''.$nextInstance.'\');"><span class="fas fa-plus-circle" aria-hidden="true"></span>&nbsp;'.$this->lang['data_entry_247'].'</button></div>'; // Add new
+                        $html.='<div style="position:relative;top:'.self::ADD_NEW_BTN_YSHIFT.';margin-bottom:5px;"><button type="button" class="btn btn-sm btn-success " onclick="'.self::MODULE_VARNAME.'.addNewInstance(\''.$this->record.'\','.$eventId.',\''.$formName.'\');"><span class="fas fa-plus-circle" aria-hidden="true"></span>&nbsp;'.$this->lang['data_entry_247'].'</button></div>'; // Add new
                 }
                 return $html;
         }
@@ -337,8 +329,7 @@ class InstanceTable extends AbstractExternalModule
         }
         
         protected function makeChoiceDisplay($val, $repeatingFormFields, $fieldName) {
-                $enum = $repeatingFormFields[$fieldName]['select_choices_or_calculations'];
-                $choices = ($repeatingFormFields[$fieldName]['field_type'] == 'sql') ? parseEnum(getSqlFieldEnum($enum)) : parseEnum(str_replace('|', '\n', $enum));
+                $choices = parseEnum($this->Proj->metadata[$fieldName]['element_enum']);
 
                 if (is_array($val)) {
                         foreach ($val as $valkey => $cbval) {
@@ -458,8 +449,8 @@ var <?php echo self::MODULE_VARNAME;?> = (function(window, document, $, app_path
     }
     
     return {
-        addNewInstance: function(record, event, form, instance) {
-            instancePopup('Add instance', record, event, form, instance);
+        addNewInstance: function(record, event, form) {
+            instancePopup('Add instance', record, event, form, '1&extmod_instance_table_add_new=1');
             return false;
         },
         editInstance: function(record, event, form, instance) {
@@ -513,8 +504,10 @@ var <?php echo self::MODULE_VARNAME;?> = (function(window, document, $, app_path
         }
         
         /**
-         * Augment the action_tag_explain content on project Design pages by 
+         * - Augment the action_tag_explain content on project Design pages by 
          * adding some additional tr following the last built-in action tag.
+         * - If adding a new instance, read the current max instance and redirect 
+         * to a form with instance value current + 1
          * @param type $project_id
          */
         public function redcap_every_page_before_render($project_id) {
@@ -529,6 +522,18 @@ var <?php echo self::MODULE_VARNAME;?> = (function(window, document, $, app_path
                         $lastActionTagDesc .= $this->makeTagTR(static::ACTION_TAG, static::ACTION_TAG_DESC);
                                                 
                         $this->lang[$langElement] = rtrim(rtrim(rtrim(trim($lastActionTagDesc), '</tr>')),'</td>');
+                } else if (PAGE==='DataEntry/index.php' && isset($_GET['extmod_instance_table']) && isset($_GET['extmod_instance_table_add_new'])) {
+                        // adding new instance - read current max and redirect to + 1
+                        $formKey = ($this->Proj->isRepeatingEvent($_GET['event_id'])) 
+                                ? ''             // repeating event - empty string key
+                                : $_GET['page']; // repeating form  - form name key
+
+                        $recordData = REDCap::getData('array',$_GET['id'],$_GET['page'].'_complete',$_GET['evet_id']);
+                        
+                        $currentInstances = array_keys($recordData[$_GET['id']]['repeat_instances'][$_GET['event_id']][$formKey]);
+                        $nextInstance = 1 + end($currentInstances);
+                        $url = PAGE_FULL.'?pid='.$_GET['pid'].'&id='.$_GET['id'].'&event_id='.$_GET['event_id'].'&page='.$_GET['page'].'&instance='.$nextInstance.'&extmod_instance_table=1';
+                        redirect($url);
                 }
         }
   
