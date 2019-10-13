@@ -28,6 +28,7 @@ class InstanceTable extends AbstractExternalModule
         const ACTION_TAG = '@INSTANCETABLE';
         const ACTION_TAG_HIDE_FIELD = '@INSTANCETABLE_HIDE';
         const ACTION_TAG_LABEL = '@INSTANCETABLE_LABEL';
+        const ACTION_TAG_SCROLLX = '@INSTANCETABLE_SCROLLX';
         const ADD_NEW_BTN_YSHIFT = '0px';
         const MODULE_VARNAME = 'MCRI_InstanceTable';
         const ACTION_TAG_DESC = 'Use with descriptive text fields to display a table of data from instances of a repeating form, or forms in a repeating event, with (for users with edit permissions) links to add/edit instances in a popup window.<br>* @INSTANCETABLE=my_form_name<br>* @INSTANCETABLE=event_name:my_form_name';
@@ -132,6 +133,12 @@ class InstanceTable extends AbstractExternalModule
                                 $repeatingFormDetails['ajax_url'] = $ajaxUrl."&record={$this->record}&event_id=$eventId&form_name=$formName";
                                 $repeatingFormDetails['markup'] = '';
 
+                                if (preg_match("/".self::ACTION_TAG_SCROLLX."/", $fieldDetails['field_annotation'], $matches)) {
+                                        $repeatingFormDetails['scroll_x'] = true;
+                                } else {
+                                        $repeatingFormDetails['scroll_x'] = false;
+                                }
+                                
                                 $this->taggedFields[] = $repeatingFormDetails;
                         }
                 } 
@@ -168,11 +175,11 @@ class InstanceTable extends AbstractExternalModule
                         switch ($repeatingFormDetails['permission_level']) {
                                 case 1: // view & edit
                                         $repeatingFormDetails['permission_level'] = 1; 
-                                        $repeatingFormDetails['markup'] = $this->makeHtmlTable($repeatingFormDetails['html_table_id'], $repeatingFormDetails['html_table_class'], $repeatingFormDetails['event_id'], $repeatingFormDetails['form_name'], true);
+                                        $repeatingFormDetails['markup'] = $this->makeHtmlTable($repeatingFormDetails['html_table_id'], $repeatingFormDetails['html_table_class'], $repeatingFormDetails['event_id'], $repeatingFormDetails['form_name'], true, $repeatingFormDetails['scroll_x']);
                                         break;
                                 case '2': // read only
                                         $repeatingFormDetails['permission_level'] = 2; 
-                                        $repeatingFormDetails['markup'] = $this->makeHtmlTable($repeatingFormDetails['html_table_id'], $repeatingFormDetails['html_table_class'], $repeatingFormDetails['event_id'], $repeatingFormDetails['form_name'], false);
+                                        $repeatingFormDetails['markup'] = $this->makeHtmlTable($repeatingFormDetails['html_table_id'], $repeatingFormDetails['html_table_class'], $repeatingFormDetails['event_id'], $repeatingFormDetails['form_name'], false, $repeatingFormDetails['scroll_x']);
                                         break;
                                 case '0': // no access
                                         $repeatingFormDetails['markup'] = self::ERROR_NO_VIEW_ACCESS;
@@ -190,10 +197,11 @@ class InstanceTable extends AbstractExternalModule
                 }
         }
         
-        protected function makeHtmlTable($tableElementId, $tableFormClass, $eventId, $formName, $canEdit) {
+        protected function makeHtmlTable($tableElementId, $tableFormClass, $eventId, $formName, $canEdit, $scrollX=false) {
+                $scrollStyle = ($scrollX) ? "max-width:790px;" : "";
                 $nColumns = 1; // start at 1 for # (Instance) column
                 $html = '<div class="" style="margin-top:10px; margin-bottom:'.self::ADD_NEW_BTN_YSHIFT.';">';
-                $html .= '<table id="'.$tableElementId.'" class="table table-striped table-bordered table-condensed table-responsive '.self::MODULE_VARNAME.' '.$tableFormClass.'" width="100%" cellspacing="0">';
+                $html .= '<table id="'.$tableElementId.'" class="table table-striped table-bordered table-condensed table-responsive '.self::MODULE_VARNAME.' '.$tableFormClass.'" width="100%" cellspacing="0" style="'.$scrollStyle.'">';
                 $html .= '<thead><tr><th>#</th>'; // .$this->lang['data_entry_246'].'</th>'; // Instance
                 
                 $repeatingFormFields = REDCap::getDataDictionary('array', false, null, $formName);
@@ -329,8 +337,12 @@ class InstanceTable extends AbstractExternalModule
         }
         
         protected function makeChoiceDisplay($val, $repeatingFormFields, $fieldName) {
-                $choices = parseEnum($this->Proj->metadata[$fieldName]['element_enum']);
-
+                if ($this->Proj->metadata[$fieldName]['element_type']==='sql') {
+                        $choices = parseEnum(getSqlFieldEnum($this->Proj->metadata[$fieldName]['element_enum']));
+                } else {
+                        $choices = parseEnum($this->Proj->metadata[$fieldName]['element_enum']);
+                }
+                
                 if (is_array($val)) {
                         foreach ($val as $valkey => $cbval) {
                                 if ($cbval==='1') {

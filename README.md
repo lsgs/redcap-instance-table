@@ -7,6 +7,7 @@ If project is longitudinal, use @INSTANCETABLE=event_name:form_name to specify t
 * Add or Edit instances in popup window (View only if user has read-only permission for the repeating form).
 * Option to hide fields from table using @INSTANCETABLE_HIDE tag on the repeating field.
 * Option to specify column headings using @INSTANCETABLE_LABEL='label' tag (default is field label).
+* Default behaviour is for a wide table to cause its container to grow. Use @INSTANCETABLE_SCROLLX to get a horizontal scroll-bar instead.
 * Uses DataTables to facilitate sorting, search and paging within the table of instance data.
 * Does not show table for users with no read permission to the repeating form.
 * Displays in both regular data entry and survey forms.
