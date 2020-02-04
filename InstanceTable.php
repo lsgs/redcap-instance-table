@@ -29,6 +29,7 @@ class InstanceTable extends AbstractExternalModule
         const ACTION_TAG_HIDE_FIELD = '@INSTANCETABLE_HIDE';
         const ACTION_TAG_LABEL = '@INSTANCETABLE_LABEL';
         const ACTION_TAG_SCROLLX = '@INSTANCETABLE_SCROLLX';
+        const ACTION_TAG_HIDEADDBTN = '@INSTANCETABLE_HIDEADD'; // i.e. hide "Add" button even if user has edit access to form
         const ADD_NEW_BTN_YSHIFT = '0px';
         const MODULE_VARNAME = 'MCRI_InstanceTable';
         const ACTION_TAG_DESC = 'Use with descriptive text fields to display a table of data from instances of a repeating form, or forms in a repeating event, with (for users with edit permissions) links to add/edit instances in a popup window.<br>* @INSTANCETABLE=my_form_name<br>* @INSTANCETABLE=event_name:my_form_name';
@@ -102,13 +103,13 @@ class InstanceTable extends AbstractExternalModule
                 
                 foreach ($instrumentFields as $fieldName => $fieldDetails) {
                         $matches = array();
-                        // /@INSTANCETABLE='?((\w+_arm_\d+:)?\w+)'?\s?/
+                        // /@INSTANCETABLE='?((\w+_arm_\d+[a-z]?:)?\w+)'?\s?/
                         // asdf@INSTANCETABLE='eee_arm_1:fff_fff' asdf
                         // Full match	4-39	@INSTANCETABLE='eee_arm_1:fff_fff' 
                         // Group 1.	20-37	eee_arm_1:fff_fff
                         // Group 2.	20-30	eee_arm_1:
                         if ($fieldDetails['field_type']==='descriptive' &&
-                            preg_match("/".self::ACTION_TAG."='?((\w+_arm_\d+:)?\w+)'?\s?/", $fieldDetails['field_annotation'], $matches)) {
+                            preg_match("/".self::ACTION_TAG."='?((\w+_arm_\d+[a-z]?:)?\w+)'?\s?/", $fieldDetails['field_annotation'], $matches)) {
                                 
                                 if (REDCap::isLongitudinal() && strpos($matches[1], ':')>0) {
                                         $eventform = explode(':', $matches[1], 2);
@@ -138,6 +139,12 @@ class InstanceTable extends AbstractExternalModule
                                 } else {
                                         $repeatingFormDetails['scroll_x'] = false;
                                 }
+
+                                if (preg_match("/".self::ACTION_TAG_HIDEADDBTN."/", $fieldDetails['field_annotation'], $matches)) {
+                                        $repeatingFormDetails['hide_add_btn'] = true;
+                                } else {
+                                        $repeatingFormDetails['hide_add_btn'] = false;
+                                }
                                 
                                 $this->taggedFields[] = $repeatingFormDetails;
                         }
@@ -157,13 +164,15 @@ class InstanceTable extends AbstractExternalModule
                 foreach ($this->taggedFields as $key => $repeatingFormDetails) {
                         if ($this->isSurvey) {
                                 $repeatingFormDetails['permission_level'] = 2; // always read only in survey view
+                        } else if ($repeatingFormDetails['hide_add_btn']) {
+                                $repeatingFormDetails['permission_level'] = 2; // Hide "Add" button = "read only" (effectively!)
                         } else if ($repeatingFormDetails['permission_level'] > -1) {
                                 switch ($this->user_rights['forms'][$repeatingFormDetails['form_name']]) {
                                         case '1': $repeatingFormDetails['permission_level'] = 1; break; // view/edit
                                         case '2': $repeatingFormDetails['permission_level'] = 2; break; // read only
                                         case '3': $repeatingFormDetails['permission_level'] = 1; break; // view/edit + edit survey responses
                                         case '0': $repeatingFormDetails['permission_level'] = 0; break; // no access
-                                        default: $repeatingFormDetails['permission_level'] = -1; break;
+                                        default : $repeatingFormDetails['permission_level'] = -1; break;
                                 }
                         }
                         $this->taggedFields[$key] = $repeatingFormDetails;
@@ -174,11 +183,9 @@ class InstanceTable extends AbstractExternalModule
                 foreach ($this->taggedFields as $key => $repeatingFormDetails) {
                         switch ($repeatingFormDetails['permission_level']) {
                                 case 1: // view & edit
-                                        $repeatingFormDetails['permission_level'] = 1; 
                                         $repeatingFormDetails['markup'] = $this->makeHtmlTable($repeatingFormDetails['html_table_id'], $repeatingFormDetails['html_table_class'], $repeatingFormDetails['event_id'], $repeatingFormDetails['form_name'], true, $repeatingFormDetails['scroll_x']);
                                         break;
                                 case '2': // read only
-                                        $repeatingFormDetails['permission_level'] = 2; 
                                         $repeatingFormDetails['markup'] = $this->makeHtmlTable($repeatingFormDetails['html_table_id'], $repeatingFormDetails['html_table_class'], $repeatingFormDetails['event_id'], $repeatingFormDetails['form_name'], false, $repeatingFormDetails['scroll_x']);
                                         break;
                                 case '0': // no access
@@ -293,7 +300,15 @@ class InstanceTable extends AbstractExternalModule
                                         $outValue = $this->makeChoiceDisplay($value, $repeatingFormFields, $fieldName);
 
                                 } else if ($fieldType==='text') {
-                                        $outValue = $this->makeTextDisplay($value, $repeatingFormFields, $fieldName);
+                                        $ontologyOption = $this->Proj->metadata[$fieldName]['element_enum'];
+                                        if ($ontologyOption!=='' && preg_match('/^\w+:\w+$/', $ontologyOption)) {
+                                                // ontology fields are text fields with an element enum like "BIOPORTAL:ICD10"
+                                                list($ontologyService, $ontologyCategory) = explode(':',$ontologyOption,2);
+                                                $outValue = $this->makeOntologyDisplay($value, $ontologyService, $ontologyCategory);
+                                        } else {
+                                                // regular text fields have null element_enum
+                                                $outValue = $this->makeTextDisplay($value, $repeatingFormFields, $fieldName);
+                                        }
                                         
                                 } else if ($fieldType==='file') {
                                         $outValue = $this->makeFileDisplay($value, $record, $event, $instance, $fieldName);
@@ -392,6 +407,16 @@ class InstanceTable extends AbstractExternalModule
                 $downloadDocUrl = APP_PATH_WEBROOT.'DataEntry/file_download.php?pid='.PROJECT_ID."&s=&record=$record&event_id=$event_id&instance=$instance&field_name=$fieldName&id=$val&doc_id_hash=".Files::docIdHash($val);
                 return "<button class='btn btn-defaultrc btn-xs' style='font-size:8pt;' onclick=\"window.open('$downloadDocUrl','_blank');return false;\">{$this->lang['design_121']}</button>";
         }
+
+        protected function makeOntologyDisplay($val, $service, $category) {
+                $sql = "select label from redcap.redcap_web_service_cache where project_id=".db_escape(PROJECT_ID)." and service='".db_escape($service)."' and category='".db_escape($category)."' and `value`='".db_escape($val)."'";
+                $q = db_query($sql);
+                $cachedLabel = db_result($q, 0);
+//                $cachedLabel = db_result(db_query("select label from redcap.redcap_web_service_cache where project_id=".db_escape($PROJECT_ID)." and service='".db_escape($service)."' and category='".db_escape($category)."' and `value`='".db_escape($val)."'"), 0);
+                return (is_null($cachedLabel) || $cachedLabel==='') 
+                        ? $val
+                        : $cachedLabel.' <span class="text-muted">('.$val.')</span>';
+        }
         
         protected function insertJS() {
                 ?>
@@ -403,9 +428,10 @@ class InstanceTable extends AbstractExternalModule
 <script type="text/javascript">
 'use strict';
 var <?php echo self::MODULE_VARNAME;?> = (function(window, document, $, app_path_webroot, pid, simpleDialog, undefined) { // var MCRI_FormInstanceTable ...
+    var isSurvey = <?php echo ($this->isSurvey)?'true':'false';?>;
     var tableClass = '<?php echo self::MODULE_VARNAME;?>';
-    var langYes = '<?php echo $this->lang['design_100'];?>';
-    var langNo = '<?php echo $this->lang['design_99'];?>';
+    var langYes = '<?php echo js_escape($this->lang['design_100']);?>';
+    var langNo = '<?php echo js_escape($this->lang['design_99']);?>';
     var config = <?php echo json_encode($this->taggedFields, JSON_PRETTY_PRINT);?>;
     var taggedFieldNames = [];
 
@@ -414,10 +440,13 @@ var <?php echo self::MODULE_VARNAME;?> = (function(window, document, $, app_path
             taggedFieldNames.push(taggedField.field_name);
             $('#'+taggedField.field_name+'-tr td:last')
                     .append(taggedField.markup);
-            if (taggedField.permission_level==1) {
-                $('#'+taggedField.html_table_id).DataTable( { "ajax": taggedField.ajax_url } );
-            } else {
-                $('#'+taggedField.html_table_id).DataTable();
+            var thisTbl = $('#'+taggedField.html_table_id)
+                    .DataTable( { 
+                        "stateSave": true, 
+                        "stateDuration": 0 
+                    } );
+            if (!isSurvey) {
+                thisTbl.ajax.url(taggedField.ajax_url).load();
             }
         });
 
