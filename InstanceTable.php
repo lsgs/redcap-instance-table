@@ -30,6 +30,8 @@ class InstanceTable extends AbstractExternalModule
         const ACTION_TAG_LABEL = '@INSTANCETABLE_LABEL';
         const ACTION_TAG_SCROLLX = '@INSTANCETABLE_SCROLLX';
         const ACTION_TAG_HIDEADDBTN = '@INSTANCETABLE_HIDEADD'; // i.e. hide "Add" button even if user has edit access to form
+        const ACTION_TAG_SRC = '@INSTANCETABLE_SRC';
+        const ACTION_TAG_DST = '@INSTANCETABLE_DST';
         const ADD_NEW_BTN_YSHIFT = '0px';
         const MODULE_VARNAME = 'MCRI_InstanceTable';
         const ACTION_TAG_DESC = 'Use with descriptive text fields to display a table of data from instances of a repeating form, or forms in a repeating event, with (for users with edit permissions) links to add/edit instances in a popup window.<br>* @INSTANCETABLE=my_form_name<br>* @INSTANCETABLE=event_name:my_form_name';
@@ -48,7 +50,7 @@ class InstanceTable extends AbstractExternalModule
         }
         
         public function redcap_data_entry_form_top($project_id, $record, $instrument, $event_id, $group_id, $repeat_instance) {
-                $this->initHook($record, $instrument, $event_id);
+                $this->initHook($record, $instrument, $event_id, false, $group_id, $repeat_instance);
                 $this->pageTop();
                 
                 if (isset($_GET['extmod_instance_table']) && $_GET['extmod_instance_table']=='1') {
@@ -58,7 +60,7 @@ class InstanceTable extends AbstractExternalModule
         }
         
         public function redcap_survey_page_top($project_id, $record, $instrument, $event_id, $group_id, $survey_hash, $response_id, $repeat_instance) {
-                $this->initHook($record, $instrument, $event_id, true);
+                $this->initHook($record, $instrument, $event_id, true, $group_id, $repeat_instance);
                 $this->pageTop();
         }
         
@@ -69,11 +71,13 @@ class InstanceTable extends AbstractExternalModule
                 }
         }
         
-        protected function initHook($record, $instrument, $event_id, $isSurvey=false) {
+        protected function initHook($record, $instrument, $event_id, $isSurvey=false, $group_id, $repeat_instance) {
             $this->record = $record;
             $this->instrument = $instrument;
             $this->event_id = $event_id;
             $this->isSurvey = $isSurvey;
+            $this->group_id = $group_id;
+            $this->repeat_instance = $repeat_instance;
         }
         
         protected function pageTop() {
@@ -96,7 +100,6 @@ class InstanceTable extends AbstractExternalModule
         }
         
         protected function setTaggedFields() {
-                $ajaxUrl = $this->getUrl('instance_table_ajax.php');
                 $this->taggedFields = array();
                 
                 $instrumentFields = REDCap::getDataDictionary('array', false, true, $this->instrument);
@@ -131,7 +134,21 @@ class InstanceTable extends AbstractExternalModule
                                 $repeatingFormDetails['form_fields'] = array();
                                 $repeatingFormDetails['html_table_id'] = self::MODULE_VARNAME.'_'.$fieldName.'_tbl_'.$eventName.'_'.$formName;
                                 $repeatingFormDetails['html_table_class'] = self::MODULE_VARNAME.'_'.$eventName.'_'.$formName; // used to find tables to refresh after add/edit
-                                $repeatingFormDetails['ajax_url'] = $ajaxUrl."&record={$this->record}&event_id=$eventId&form_name=$formName";
+
+                                // added 2020-09-02 by scweber@stanford.edu - new feature to filter records on a supplemental join key
+                                // useful in cases where repeating data entry forms are being used to represent relational data
+                                // e.g. when multiple medications are recorded on each visit, the visit date is also captured for each medication
+                                // and the medications shown in the instance table on a given visit should be filtered by the current visit date
+                                if (preg_match("/".self::ACTION_TAG_SRC."='?((\w+_arm_\d+[a-z]?:)?\w+)'?\s?/", $fieldDetails['field_annotation'], $matches)) {
+                                    $recordData = REDCap::getData('array', $this->record, $matches[1], $this->event_id, null, false, false, false, null, false); // export raw
+                                    $join_val  = $recordData[1]['repeat_instances'][$this->event_id][$this->instrument][$this->repeat_instance][$matches[1]];
+                                    if (preg_match("/".self::ACTION_TAG_DST."='?((\w+_arm_\d+[a-z]?:)?\w+)'?\s?/", $fieldDetails['field_annotation'], $matches)) {
+                                        $filter  = "[" . $matches[1] ."] = '" .$join_val."'";
+                                    }
+                                }
+
+                                $ajaxUrl = $this->getUrl('instance_table_ajax.php');
+                                $repeatingFormDetails['ajax_url'] = $ajaxUrl."&record={$this->record}&event_id=$eventId&form_name=$formName&filter=$filter";
                                 $repeatingFormDetails['markup'] = '';
 
                                 if (preg_match("/".self::ACTION_TAG_SCROLLX."/", $fieldDetails['field_annotation'], $matches)) {
@@ -236,7 +253,7 @@ class InstanceTable extends AbstractExternalModule
                 // if survey form get data now (as have no auth for an ajax call)
                 if ($this->isSurvey) {
                         $html.='<tbody>';
-                        $instanceData = $this->getInstanceData($this->record, $eventId, $formName, false);
+                        $instanceData = $this->getInstanceData($this->record, $eventId, $formName, null,false);
                         if (count($instanceData)===0) {
                                 $html.='<tr><td colspan="'.$nColumns.'">No data available in table</td></tr>';
                         } else {
@@ -259,7 +276,7 @@ class InstanceTable extends AbstractExternalModule
                 return $html;
         }
         
-        public function getInstanceData($record, $event, $form, $includeFormStatus=true) {
+        public function getInstanceData($record, $event, $form, $filter, $includeFormStatus=true) {
                 $instanceData = array();
 
                 $repeatingFormFields = REDCap::getDataDictionary('array', false, null, $form);
@@ -274,7 +291,7 @@ class InstanceTable extends AbstractExternalModule
                 }
                 if ($includeFormStatus) { $fieldsNeeded[] = $form.'_complete'; }
 
-                $recordData = REDCap::getData('array', $record, $fieldsNeeded, $event, null, false, false, false, null, true); // export labels not raw
+                $recordData = REDCap::getData('array', $record, $fieldsNeeded, $event, null, false, false, false, $filter, true); // export labels not raw
 
                 $formKey = ($this->Proj->isRepeatingEvent($event)) 
                         ? ''     // repeating event - empty string key
