@@ -530,13 +530,21 @@ var <?php echo self::MODULE_VARNAME;?> = (function(window, document, $, app_path
     }
       })(window, document, jQuery, app_path_webroot, pid, simpleDialog);
 
-      function refreshTables() {
+    function refreshTables() {
+        // refresh immediately , just in case the server has already processed the saveData call
+        actuallyRefreshTables();
+        // now start a timer and try it again after a second, to give the server ample time to persist the data
+        window.setTimeout( actuallyRefreshTables(), 1500);
+    }
+    
+    function actuallyRefreshTables() {
         var tableClass = '<?php echo self::MODULE_VARNAME;?>';
         $('.'+tableClass).each(function() {
-          $(this).DataTable().ajax.reload( null, false ); // don't reset user paging on reload
+            $(this).DataTable().ajax.reload( null, false ); // don't reset user paging on reload
         });
-      }
-    </script>
+    }
+
+</script>
     <?php
   }
 
@@ -572,6 +580,9 @@ var <?php echo self::MODULE_VARNAME;?> = (function(window, document, $, app_path
       }
 
       $(document).ready(function() {
+                        // add this window.unload for added reliability in invoking refreshTables on close of popup
+                        window.onunload = function(){window.opener.refreshTables();};
+
                         $('#form').attr('action',$('#form').attr('action')+'&extmod_instance_table=1');
                         $('button[name=submit-btn-saverecord]')// Save & Close
                             .attr('name', 'submit-btn-savecontinue')
@@ -580,7 +591,7 @@ var <?php echo self::MODULE_VARNAME;?> = (function(window, document, $, app_path
                               dataEntrySubmit(this);
                               event.preventDefault();
                               window.opener.refreshTables();
-                              window.setTimeout(window.close, 500);
+                              window.setTimeout(window.close, 800);
                             });
                           $('#submit-btn-savenextinstance')// Save & Next Instance
                             .attr('name', 'submit-btn-savecontinue')
@@ -670,7 +681,7 @@ var <?php echo self::MODULE_VARNAME;?> = (function(window, document, $, app_path
         }
   
         /**
-         * Make a table row for an action tag copied from 
+         * Make a table row for an action tag copied from
          * v8.5.0/Design/action_tag_explain.php
          * @global type $isAjax
          * @param type $tag
