@@ -24,6 +24,9 @@ class InstanceTable extends AbstractExternalModule
         protected $event_id;
         protected $record;
         protected $instance;
+        protected $group_id;
+        protected $repeat_instance;
+        protected $defaultValueForNewPopup;
 
         const ACTION_TAG = '@INSTANCETABLE';
         const ACTION_TAG_HIDE_FIELD = '@INSTANCETABLE_HIDE';
@@ -35,7 +38,7 @@ class InstanceTable extends AbstractExternalModule
         const ACTION_TAG_DST = '@INSTANCETABLE_DST'; // deprecated
         const ADD_NEW_BTN_YSHIFT = '0px';
         const MODULE_VARNAME = 'MCRI_InstanceTable';
-        const ACTION_TAG_DESC = 'Use with descriptive text fields to display a table of data from instances of a repeating form, or forms in a repeating event, with (for users with edit permissions) links to add/edit instances in a popup window.<br>* @INSTANCETABLE=my_form_name<br>* @INSTANCETABLE=event_name:my_form_name';
+        const ACTION_TAG_DESC = 'Use with descriptive text fields to display a table of data from instances of a repeating form, or forms in a repeating event, with (for users with edit permissions) links to add/edit instances in a popup window.<br>* @INSTANCETABLE=my_form_name<br>* @INSTANCETABLE=event_name:my_form_name<br>There are some additional tags that may be used to further tweak the table behaviour. Take a look at the documentation via the External Modulers page for more information.';
 
         const ERROR_NOT_REPEATING_CLASSIC = '<div class="red">ERROR: "%s" is not a repeating form. Contact the project designer.';
         const ERROR_NOT_REPEATING_LONG = '<div class="red">ERROR: "%s" is not a repeating form for event "%s". Contact the project designer.';
@@ -140,19 +143,20 @@ class InstanceTable extends AbstractExternalModule
                                 // useful in cases where repeating data entry forms are being used to represent relational data
                                 // e.g. when multiple medications are recorded on each visit (of which there can also be multiple),
                                 // the medications shown in the instance table on a visit instance should be filtered by their relationship with that visit instance
+                                $filter = '';
+                                $this->defaultValueForNewPopup = '';
                                 if (preg_match("/".self::ACTION_TAG_REF."\s*=\s*'?((\w+_arm_\d+[a-z]?:)?\w+)'?\s?/", $fieldDetails['field_annotation'], $matches)) {
-
-                                  $join_val  = ($this->repeat_instance == null || empty($this->repeat_instance))
-                                    ? 1 : $this->repeat_instance;
-                                  $filter  = "[" . trim($matches[1]) ."] = '" .$join_val."'";
-                                  $this->defaultValueForNewPopup = '&parent_instance='.$join_val;
+                                    $join_val  = ($this->repeat_instance == null || empty($this->repeat_instance))
+                                        ? 1 : $this->repeat_instance;
+                                    $filter  = "[" . trim($matches[1]) ."]='" .$join_val."'";
+                                    $this->defaultValueForNewPopup = '&parent_instance='.$join_val;
                                 }
                                 // keep legacy support for _SRC and _DST tags but any in use should be converted to _REF tags
                                 if (preg_match("/".self::ACTION_TAG_SRC."='?((\w+_arm_\d+[a-z]?:)?\w+)'?\s?/", $fieldDetails['field_annotation'], $matches)) {
                                     $recordData = REDCap::getData('array', $this->record, $matches[1], $this->event_id, null, false, false, false, null, false); // export raw
                                     $join_val  = $recordData[1]['repeat_instances'][$this->event_id][$this->instrument][$this->repeat_instance][$matches[1]];
                                     if (preg_match("/".self::ACTION_TAG_DST."='?((\w+_arm_\d+[a-z]?:)?\w+)'?\s?/", $fieldDetails['field_annotation'], $matches)) {
-                                        $filter  = "[" . $matches[1] ."] = '" .$join_val."'";
+                                        $filter  = "[" . $matches[1] ."]='" .$join_val."'";
                                     }
                                 }
 
@@ -472,7 +476,8 @@ var <?php echo self::MODULE_VARNAME;?> = (function(window, document, $, app_path
             var thisTbl = $('#'+taggedField.html_table_id)
                     .DataTable( {
                         "stateSave": true,
-                        "stateDuration": 0
+                        "stateDuration": 0,
+                        "lengthMenu": [[10, 25, 50, 100, -1], [10, 25, 50, 100, "All"]]
                     } );
             if (!isSurvey) {
                 thisTbl.ajax.url(taggedField.ajax_url).load();
@@ -627,11 +632,11 @@ var <?php echo self::MODULE_VARNAME;?> = (function(window, document, $, app_path
             simpleDialog('<div style=\'margin:10px 0;font-size:13px;\'>' +
               'Are you sure you wish to PERMANENTLY delete this record\'s data on THIS INSTRUMENT ONLY?' +
               '<div style=&quot;margin-top:15px;color:#C00000;&quot;>' +
-              'NOTE: This only applies to the current repeating instance of this form, which is Instance <b>13</b>.' +
+              'NOTE: This only applies to the current repeating instance of this form.' +
               '</div> ' +
               '<div style=&quot;margin-top:15px;color:#C00000;font-weight:bold;&quot;>' +
               'This process is permanent and CANNOT BE REVERSED.</div> </div>',
-              'DELETE ALL DATA ON THIS FORM FOR RECORD &quot;1&quot;?',null,600,null,
+              'DELETE ALL DATA ON THIS FORM?',null,600,null,
               'Cancel',
               function(){
                 dataEntrySubmit( document.getElementsByName('submit-btn-deleteform')[0] );
@@ -705,10 +710,10 @@ var <?php echo self::MODULE_VARNAME;?> = (function(window, document, $, app_path
 				)
 			) .
 			RCView::td(array('class'=>'nowrap', 'style'=>'background-color:#f5f5f5;color:#912B2B;padding:7px;font-weight:bold;border:1px solid #ccc;border-bottom:0;border-left:0;border-right:0;'),
-				$tag.'<img title="Instance Select External Module" src="../Resources/images/puzzle_small.png" style="margin-left:2px;">'
+				$tag
 			) .
 			RCView::td(array('style'=>'font-size:12px;background-color:#f5f5f5;padding:7px;border:1px solid #ccc;border-bottom:0;border-left:0;'),
-				$description
+                                '<i class="fas fa-cube mr-1"></i>'.$description
 			)
 		);
 
