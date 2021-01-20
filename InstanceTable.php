@@ -614,6 +614,13 @@ var <?php echo self::MODULE_VARNAME;?> = (function(window, document, $, app_path
                                 window.opener.refreshTables();
                                 window.close();
           });
+          <?php
+          if ( isset($_GET['extmod_instance_table_add_new'])) {
+          ?>
+          $('button[name=submit-btn-deleteform]').css("display", "none");
+          <?php
+          } else {
+          ?>
         $('button[name=submit-btn-deleteform]')
           .removeAttr('onclick')
           .click(function(event) {
@@ -635,6 +642,7 @@ var <?php echo self::MODULE_VARNAME;?> = (function(window, document, $, app_path
             return false;
                             });
                 <?php
+          }
                 if (isset($_GET['__reqmsg'])) {
                 ?>
                         setTimeout(function() {
