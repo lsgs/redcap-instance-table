@@ -621,13 +621,13 @@ class InstanceTable extends AbstractExternalModule
       </style>
       <script type="text/javascript">
 
-        $.urlParamReplace = function (url, name, value) {
+        $.urlParamSetOrReplace = function (url, name, value) {
           var results = new RegExp('[\?&]' + name + '=([^&#]*)')
             .exec(url);
           if (results !== null) {
             return url.replace(name + '=' + results[1], name + '=' + value);
           } else {
-            return url;
+            return url + '&'+ name + '='+value;
           }
         }
 
@@ -661,8 +661,7 @@ class InstanceTable extends AbstractExternalModule
               window.opener.refreshTables();
               window.setTimeout(window.close, 800);
             });
-          //$('#__SUBMITBUTTONS__-div .btn-group :button:not(#submit-btn-dropdown)')
-          //$('button[name=submit-btn-savecontinue]')// Save & Continue
+          // Save & Continue
           $('#submit-btn-savecontinue')
             .attr('name', 'submit-btn-savecontinue')
             .removeAttr('onclick')
@@ -670,36 +669,25 @@ class InstanceTable extends AbstractExternalModule
               dataEntrySubmit(this);
               event.preventDefault();
               window.opener.refreshTables();
-              var currentUrl = window.location.href;
-              var redirectUrl = currentUrl;
-              var btnstate = $.urlParamValue(currentUrl, "btnstate");
-              if (btnstate == null) {
-                redirectUrl = currentUrl + '&btnstate=savecontinue';
-              } else {
-                redirectUrl = $.urlParamReplace(redirectUrl, "btnstate", "savecontinue");
-              }
-              window.setTimeout($.redirectUrl, 60, redirectUrl);
+              window.setTimeout($.redirectUrl, 60,
+                $.urlParamSetOrReplace(window.location.href,"btnstate","savecontinue"));
             });
           /* highjacking existing buttons for custom functionality*/
           $('#submit-btn-savenextform')
             // Save & New Instance
-            // default redcap behavior does not always have this option available
+            // default redcap behavior does not have this option available
             .attr('name', 'submit-btn-savecontinue')
             .removeAttr('onclick')
             .text(<?php echo "'" . $this->lang['data_entry_275'] . "'"?>)
             .click(function (event) {
-              var currentUrl = window.location.href;
+              var redirectUrl = window.location.href;
               dataEntrySubmit(this);
               event.preventDefault();
               window.opener.refreshTables();
-              var redirectUrl = $.urlParamReplace(currentUrl, "instance", 1)
-                + '&extmod_instance_table_add_new=1';
-              var btnstate = $.urlParamValue(redirectUrl, "btnstate");
-              if (btnstate == null) {
-                redirectUrl = redirectUrl + '&btnstate=savenextform';
-              } else {
-                redirectUrl = $.urlParamReplace(redirectUrl, "btnstate", "savenextform");
-              }
+              redirectUrl = $.urlParamSetOrReplace(redirectUrl, "instance", 1);
+              redirectUrl = $.urlParamSetOrReplace(redirectUrl, "extmod_instance_table_add_new", 1);
+              redirectUrl = $.urlParamSetOrReplace(redirectUrl, "btnstate", "savenextform");
+
               window.setTimeout($.redirectUrl, 500, redirectUrl);
             });
           $('#submit-btn-savenextinstance')
@@ -709,23 +697,17 @@ class InstanceTable extends AbstractExternalModule
             .removeAttr('onclick')
             .text(<?php echo "'" . $this->lang['data_entry_276'] . "'"?>)
             .click(function (event) {
-              var currentUrl = window.location.href;
+              var redirectUrl = window.location.href;
               dataEntrySubmit(this);
               event.preventDefault();
               window.opener.refreshTables();
-              var next = $.urlParamValue(currentUrl, "next_instance");
-              var redirectUrl = currentUrl;
+              var next = $.urlParamValue(redirectUrl, "next_instance");
               if (next == null) {
-                redirectUrl = currentUrl + '&next_instance=1';
-              } else {
-                redirectUrl = $.urlParamReplace(redirectUrl, "next_instance", parseInt(next) + 1);
+                next = "0";
               }
-              next = $.urlParamValue(redirectUrl, "btnstate")
-              if (next == null) {
-                redirectUrl = redirectUrl + '&btnstate=savenextinstance';
-              } else {
-                redirectUrl = $.urlParamReplace(redirectUrl, "btnstate", "savenextinstance");
-              }
+              redirectUrl = $.urlParamSetOrReplace(redirectUrl, "next_instance", parseInt(next) + 1);
+              redirectUrl = $.urlParamSetOrReplace(redirectUrl, "btnstate", "savenextinstance");
+
               window.setTimeout($.redirectUrl, 500, redirectUrl);
             });
           $('#submit-btn-saveexitrecord').css("display", "none");
