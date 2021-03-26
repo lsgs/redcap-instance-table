@@ -11,10 +11,14 @@ use DateTimeRC;
 use Files;
 use Form;
 use RCView;
+use UIState;
 use REDCap;
+//require_once "emLoggerTrait.php";
+
 
 class InstanceTable extends AbstractExternalModule
 {
+    //use emLoggerTrait;
     protected $isSurvey = false;
     protected $taggedFields = array();
 
@@ -606,6 +610,7 @@ class InstanceTable extends AbstractExternalModule
      */
     protected function popupViewTweaks()
     {
+
         ?>
       <style type="text/css">
           .navbar-toggler, #west, #formSaveTip, #dataEntryTopOptionsButtons, #formtop-div {
@@ -656,6 +661,25 @@ class InstanceTable extends AbstractExternalModule
               window.opener.refreshTables();
               window.setTimeout(window.close, 800);
             });
+          //$('#__SUBMITBUTTONS__-div .btn-group :button:not(#submit-btn-dropdown)')
+          //$('button[name=submit-btn-savecontinue]')// Save & Continue
+          $('#submit-btn-savecontinue')
+            .attr('name', 'submit-btn-savecontinue')
+            .removeAttr('onclick')
+            .click(function (event) {
+              dataEntrySubmit(this);
+              event.preventDefault();
+              window.opener.refreshTables();
+              var currentUrl = window.location.href;
+              var redirectUrl = currentUrl;
+              var btnstate = $.urlParamValue(currentUrl, "btnstate");
+              if (btnstate == null) {
+                redirectUrl = currentUrl + '&btnstate=savecontinue';
+              } else {
+                redirectUrl = $.urlParamReplace(redirectUrl, "btnstate", "savecontinue");
+              }
+              window.setTimeout($.redirectUrl, 60, redirectUrl);
+            });
           /* highjacking existing buttons for custom functionality*/
           $('#submit-btn-savenextform')
             // Save & New Instance
@@ -670,6 +694,12 @@ class InstanceTable extends AbstractExternalModule
               window.opener.refreshTables();
               var redirectUrl = $.urlParamReplace(currentUrl, "instance", 1)
                 + '&extmod_instance_table_add_new=1';
+              var btnstate = $.urlParamValue(redirectUrl, "btnstate");
+              if (btnstate == null) {
+                redirectUrl = redirectUrl + '&btnstate=savenextform';
+              } else {
+                redirectUrl = $.urlParamReplace(redirectUrl, "btnstate", "savenextform");
+              }
               window.setTimeout($.redirectUrl, 500, redirectUrl);
             });
           $('#submit-btn-savenextinstance')
@@ -689,6 +719,12 @@ class InstanceTable extends AbstractExternalModule
                 redirectUrl = currentUrl + '&next_instance=1';
               } else {
                 redirectUrl = $.urlParamReplace(redirectUrl, "next_instance", parseInt(next) + 1);
+              }
+              next = $.urlParamValue(redirectUrl, "btnstate")
+              if (next == null) {
+                redirectUrl = redirectUrl + '&btnstate=savenextinstance';
+              } else {
+                redirectUrl = $.urlParamReplace(redirectUrl, "btnstate", "savenextinstance");
               }
               window.setTimeout($.redirectUrl, 500, redirectUrl);
             });
@@ -762,8 +798,14 @@ class InstanceTable extends AbstractExternalModule
 
             $this->lang[$langElement] = rtrim(rtrim(rtrim(trim($lastActionTagDesc), '</tr>')), '</td>');
         } else if (PAGE === 'DataEntry/index.php'
-            && isset($_GET['extmod_instance_table'])
-            && isset($_GET['extmod_instance_table_add_new'])) {
+            && isset($_GET['extmod_instance_table'])) {
+            if (isset($_GET['btnstate'])) {
+              UIState::saveUIStateValue(PROJECT_ID, 'form', 'submit-btn',$_GET['btnstate']);
+            } else {
+              UIState::saveUIStateValue(PROJECT_ID, 'form', 'submit-btn','savenextinstance');
+            }
+            $buttonstate = UIState::getUIStateValue(PROJECT_ID, 'form', 'submit-btn');
+            if (isset($_GET['extmod_instance_table_add_new'])) {
             // adding new instance - read current max and redirect to + 1
             $formKey = ($this->Proj->isRepeatingEvent($_GET['event_id']))
                 ? ''             // repeating event - empty string key
@@ -774,9 +816,8 @@ class InstanceTable extends AbstractExternalModule
                 $currentInstances = array_keys($recordData[$_GET['id']]['repeat_instances'][$_GET['event_id']][$formKey]);
                 $_GET['instance'] = 1 + end($currentInstances);
             } else $_GET['instance'] = 1;
-        } else if (PAGE === 'DataEntry/index.php'
-            && isset($_GET['extmod_instance_table'])
-            && isset($_GET['next_instance'])) {
+        }
+        else if (isset($_GET['next_instance'])) {
             // if "Save & Next" instance is clicked, but next instance belongs to a different parent,
             // then redirect to a new form
             $formKey = ($this->Proj->isRepeatingEvent($_GET['event_id']))
@@ -809,7 +850,8 @@ class InstanceTable extends AbstractExternalModule
                     $_GET['instance'] = $currentInstances[$key + $_GET['next_instance']];
                 }
             }
-        }
+        }}
+
     }
 
     /**
