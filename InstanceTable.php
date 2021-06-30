@@ -45,6 +45,10 @@ class InstanceTable extends AbstractExternalModule
     const ERROR_NOT_REPEATING_LONG = '<div class="red">ERROR: "%s" is not a repeating form for event "%s". Contact the project designer.';
     const ERROR_NO_VIEW_ACCESS = '<div class="yellow">You do not have permission to view this form\'s data.';
 
+    private $valid_image_suffixes = array('jpeg','jpg','jpe','gif','png','tif','bmp');
+    private $valid_pdf_suffixes = array('pdf');
+    private $valid_dicom_suffixes = array('dcm');
+
     public function __construct() {
         parent::__construct();
         global $Proj, $lang, $user_rights;
@@ -344,7 +348,10 @@ class InstanceTable extends AbstractExternalModule
                         }
 
                     } else if ($fieldType==='file') {
-                        $outValue = $this->makeFileDisplay($value, $record, $event, $instance, $fieldName);
+                        $showInline = (
+                            strpos($this->Proj->metadata[$fieldName]['misc'], '@INLINE')!==false ||
+                            strpos($this->Proj->metadata[$fieldName]['misc'], '@IMAGEVIEW')!==false);
+                        $outValue = $this->makeFileDisplay($value, $record, $event, $instance, $fieldName, $showInline);
 
                     } else {
                         $outValue = $value;
@@ -437,9 +444,21 @@ class InstanceTable extends AbstractExternalModule
         return $outVal;
     }
 
-    protected function makeFileDisplay($val, $record, $event_id, $instance, $fieldName) {
+    protected function makeFileDisplay($val, $record, $event_id, $instance, $fieldName, $showInline) {
         $downloadDocUrl = APP_PATH_WEBROOT.'DataEntry/file_download.php?pid='.PROJECT_ID."&s=&record=$record&event_id=$event_id&instance=$instance&field_name=$fieldName&id=$val&doc_id_hash=".Files::docIdHash($val);
-        return "<button class='btn btn-defaultrc btn-xs' style='font-size:8pt;' onclick=\"window.open('$downloadDocUrl','_blank');return false;\">{$this->lang['design_121']}</button>";
+        list($mime_type, $doc_name) = Files::getEdocContentsAttributes($val);
+
+        $buttonHtml = "<button class='btn btn-defaultrc btn-xs'style='font-size:8pt;' onclick=\"window.open('$downloadDocUrl','_blank');return false;\">{$this->lang['design_121']}</button>";
+        if ($showInline) {
+            $suffix = strtolower(pathinfo($doc_name, PATHINFO_EXTENSION));
+          if (in_array($suffix, $this->valid_image_suffixes)) {
+            return "<img src=\"$downloadDocUrl\" style=\"max-width:100px;max-height:100px\" class=\"m-1\">$buttonHtml";
+          } else {
+            return "<div id='$fieldName$instance' class=\"ivem m-1\" data-fileext=\"$suffix\" data-download=\"$downloadDocUrl\">$doc_name</div>$buttonHtml";
+          }
+        }
+        return "<div>$doc_name</div>$buttonHtml";
+
     }
 
     protected function makeOntologyDisplay($val, $service, $category) {
@@ -459,6 +478,9 @@ class InstanceTable extends AbstractExternalModule
           /*.greenhighlight {background-color: inherit !important; }*/
           /*.greenhighlight table td {background-color: inherit !important; }*/
       </style>
+      <script src="<?php print $this->getUrl('js/pdfobject.min.js'); ?>"></script>
+      <script src="<?php print $this->getUrl('js/dwv.min.js'); ?>"></script>
+
       <script type="text/javascript">
         'use strict';
         var <?php echo self::MODULE_VARNAME;?> = (function(window, document, $, app_path_webroot, pid, simpleDialog, undefined) { // var MCRI_FormInstanceTable ...
@@ -467,6 +489,8 @@ class InstanceTable extends AbstractExternalModule
           var langYes = '<?php echo js_escape($this->lang['design_100']);?>';
           var langNo = '<?php echo js_escape($this->lang['design_99']);?>';
           var config = <?php echo json_encode($this->taggedFields, JSON_PRETTY_PRINT);?>;
+          var valid_pdf_suffixes = <?php print json_encode($this->valid_pdf_suffixes) ?>;
+          var valid_dicom_suffixes = <?php print json_encode($this->valid_dicom_suffixes) ?>;
           var taggedFieldNames = [];
           var defaultValueForNewPopup = '<?php echo js_escape($this->defaultValueForNewPopup);?>';
 
@@ -479,11 +503,54 @@ class InstanceTable extends AbstractExternalModule
                 .DataTable( {
                   "stateSave": true,
                   "stateDuration": 0,
-                  "lengthMenu": [[10, 25, 50, 100, -1], [10, 25, 50, 100, "All"]]
+                  "lengthMenu": [[10, 25, 50, 100, -1], [10, 25, 50, 100, "All"]],
+                  "drawCallback": function( settings ) {
+                    this.find(".ivem").each(function() {
+
+                      var url= $(this).attr("data-download");
+                      var fileext = $(this).attr("data-fileext");
+                      console.log($(this).attr("id") + " fileext="+fileext + " url="+url);
+                      if (valid_pdf_suffixes.indexOf(fileext) != -1) {
+                        url = url + '&stream=1';
+
+                        var $pdf = $('<div/>').attr('id', $(this).attr("id") + '_pdfobject')
+                          .addClass('m-1')
+                          .css('max-width', '100px')
+                          .css('max-height', '100px')
+                        .css('overflow','hidden');
+                        // Empty container and add pdf
+                        $(this).empty().append($pdf)
+                        // Set default pdf options and load any custom options from the field params
+                        var options = { fallbackLink: 'This browser does not support inline PDFs' };
+                        // Create object
+                        PDFObject.embed(url, $pdf, options);
+                      } else if (valid_dicom_suffixes.indexOf(fileext) != -1) {
+                        dwv.gui.getElement = dwv.gui.base.getElement;
+                        $(this).addClass('m-1')
+                          .css('max-width', '100px')
+                          .css('max-height', '100px')
+                          .css('overflow','hidden');
+                        // create the dwv app
+                        var app = new dwv.App();
+                        // initialise with the id of the container div
+                        var layerContainer = $('<div/>').addClass('layerContainer');
+                        layerContainer.css('margin-left', 'auto')
+                          .css('margin-right', 'auto')
+                          .css('display', 'block');
+                        $(this).empty().append(layerContainer);
+                        app.init({
+                          containerDivId: $(this).attr("id")
+                        });
+                        // load dicom data
+                        app.loadURLs([url + '&contentType=application%2Fdicom']);
+                      }
+                    });
+                  }
                 } );
               if (!isSurvey) {
                 thisTbl.ajax.url(taggedField.ajax_url).load();
               }
+              thisTbl.columns.adjust().draw();
             });
 
             // override global function doGreenHighlight() so we can skip the descriptive text fields with tables
@@ -495,9 +562,44 @@ class InstanceTable extends AbstractExternalModule
             };
           }
 
+          /*function imagePreview() {
+              console.log('in imagePreview function');
+              // base function to get elements
+              if ($('data-fileext[value="dcm"]').length) {
+                dwv.gui.getElement = dwv.gui.base.getElement;
+              }
+              $('.IVEM').each(function() {
+                console.log('in ivem');
+
+                var image_cont = $(this);
+                var url = image_cont.attr("data-download");
+                console.log("url="+url);
+                if (valid_pdf_suffixes.indexOf(image_cont.attr("data-fileext"))) {
+
+                } else if (valid_dicom_suffixes.indexOf(image_cont.attr("data-fileext"))) {
+
+                  // create the dwv app
+                  var app = new dwv.App();
+                  // initialise with the id of the container div
+
+                  var layerContainer = $('<div/>').addClass('layerContainer');
+                  layerContainer.css('max-width', '150px')
+                    .css('margin-left', 'auto')
+                    .css('margin-right', 'auto')
+                    .css('display', 'block');
+                  image_cont.empty().append(layerContainer);
+                  app.init({
+                    containerDivId: image_cont.id()
+                  });
+                  // load dicom data
+                  app.loadURLs([url + '&contentType=application%2Fdicom']);
+                }
+              })
+          }*/
+
           $(document).ready(function() {
             init();
-          });
+          })
 
           function instancePopup(title, record, event, form, instance) {
             var url = app_path_webroot+'DataEntry/index.php?pid='+pid+'&id='+record+'&event_id='+event+'&page='+form+'&instance='+instance+'&extmod_instance_table=1'+defaultValueForNewPopup;
