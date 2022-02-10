@@ -36,7 +36,7 @@ class InstanceTable extends AbstractExternalModule
         const ACTION_TAG_REF = '@INSTANCETABLE_REF';
         const ACTION_TAG_SRC = '@INSTANCETABLE_SRC'; // deprecated
         const ACTION_TAG_DST = '@INSTANCETABLE_DST'; // deprecated
-        const ADD_NEW_BTN_YSHIFT = '0px';
+        const ADD_NEW_BTN_YSHIFT = '10px';
         const MODULE_VARNAME = 'MCRI_InstanceTable';
         const ACTION_TAG_DESC = 'Use with descriptive text fields to display a table of data from instances of a repeating form, or forms in a repeating event, with (for users with edit permissions) links to add/edit instances in a popup window.<br>* @INSTANCETABLE=my_form_name<br>* @INSTANCETABLE=event_name:my_form_name<br>There are some additional tags that may be used to further tweak the table behaviour. Take a look at the documentation via the External Modulers page for more information.';
 
@@ -476,6 +476,8 @@ var <?php echo self::MODULE_VARNAME;?> = (function(window, document, $, app_path
                     .append(taggedField.markup);
             var thisTbl = $('#'+taggedField.html_table_id)
                     .DataTable( {
+                        "info": false,
+                        "paging": false,
                         "stateSave": true,
                         "stateDuration": 0,
                         "lengthMenu": [[10, 25, 50, 100, -1], [10, 25, 50, 100, "All"]]
