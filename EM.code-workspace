@@ -1,0 +1,16 @@
+{
+	"folders": [
+		{
+			"path": "."
+		},
+		{
+			"path": "..\\..\\external_modules",
+			"name": "EM Framework"
+		},
+		{
+			"path": "..\\..\\codebase",
+			"name": "REDCap"
+		}
+	],
+	"settings": {}
+}
