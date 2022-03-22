@@ -27,7 +27,13 @@
 
 	"system-settings": [
 	],
-	
+
 	"project-settings": [
+		{
+			"key": "target-form",
+			"name": "Instrument to use @INSTANCETABLE_INCLUDE actiontag to include fields, instead of @INSTANCETABLE_HIDE to exclude fields.",
+			"type": "form-list",
+			"repeatable": true
+		}
 	]
 }
