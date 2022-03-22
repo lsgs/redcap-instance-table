@@ -17,12 +17,16 @@ If project is longitudinal, use `@INSTANCETABLE=event_name:form_name` to specify
 * `@INSTANCETABLE_HIDEADD`: Suppress the "Add New" button.
 * `@INSTANCETABLE_REF=fieldname`: Where you have an instance table on a repeating form - i.e. is referencing another repeating form - you can have the instances filtered to show only those where the current instance number is saved in a field on the other form.<br>For example, an instance table in a repeating "Visit" form may be configured to show only instances of the repeating "Medication" form where the current Visit instance is selected in the `visitref` field on the Medication form: `@INSTANCETABLE @INSTANCETABLE_REF=visitref`.<br>Note that if you use `@INSTANCETABLE_REF` for an instance table on a non-repeating form the filter will default to `<ref field>=1`.<br>New instances created by clicking the "Add New" button below the instance table will have the current visit instance pre-selected.
 
-### Tags Used for Fields on a Repeating Form 
-* `@INSTANCETABLE_HIDE`: Ignore this field in instance tables.
+### Tags Used for Fields on a Repeating Form
+Marking fields to include or exclude in the instance tables.
+* `@INSTANCETABLE_HIDE`: Ignore this field in instance tables. This is used as default. 
+* `@INSTANCETABLE_INCLUDE`: Include this field in instance tables.
+  Only one of the two Actiontags can be used on an instrument.
+  Make sure to mark the instrument in the configuration, multiple instruments can be selected.
 * `@INSTANCETABLE_LABEL='column header'`: Provide an alternative column title for the field in instance tables.
 
-## Example 
-This example shows (on the right-hand side) a form containing three descriptive text fields utilising the `@INSTANCETABLE` action tag. 
+## Example
+This example shows (on the right-hand side) a form containing three descriptive text fields utilising the `@INSTANCETABLE` action tag.
 * The first is tagged `@INSTANCETABLE=nonschedule_arm_1:contact_log` and hennce displays a table of data from the "Contact Log" form in the "Nonschedule" event".
 * The second is tagged `@INSTANCETABLE=unscheduled_arm_1:visit_data_page_1` and hence displays a table of data from the "Visit Data Page 1" form from the repeating "Unscheduled event.
 * The third is tagged `@INSTANCETABLE=unscheduled_arm_1:visit_data_page_2` and hence displays a table of data from the "Visit Data Page 2" form from the repeating "Unscheduled event.
