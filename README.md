@@ -15,11 +15,14 @@ If project is longitudinal, use `@INSTANCETABLE=event_name:form_name` to specify
 ### Tags Used Alongside @INSTANCETABLE
 * `@INSTANCETABLE_SCROLLX`: Default behaviour is for a wide table to cause its container to grow. Use this tag to get a horizontal scroll-bar instead.
 * `@INSTANCETABLE_HIDEADD`: Suppress the "Add New" button.
+* `@INSTANCETABLE_PAGESIZE`: Override default choices for page sizing: specify integer default page size, or -1 for "All".
+* `@INSTANCETABLE_HIDEINSTANCECOL`: Hide the "#" column containing instance numbers.
+* `@INSTANCETABLE_VARLIST=rptfrmvar1,rptfrmva2,rptfrm_complete`: Include only the variables from the repeating form that appear in the comma-separated list. (An alternative to using `@INSTANCETABLE_HIDE` for repeating form variables. `@INSTANCETABLE_HIDE` takes precedence where both used.)
 * `@INSTANCETABLE_REF=fieldname`: Where you have an instance table on a repeating form - i.e. is referencing another repeating form - you can have the instances filtered to show only those where the current instance number is saved in a field on the other form.<br>For example, an instance table in a repeating "Visit" form may be configured to show only instances of the repeating "Medication" form where the current Visit instance is selected in the `visitref` field on the Medication form: `@INSTANCETABLE @INSTANCETABLE_REF=visitref`.<br>Note that if you use `@INSTANCETABLE_REF` for an instance table on a non-repeating form the filter will default to `<ref field>=1`.<br>New instances created by clicking the "Add New" button below the instance table will have the current visit instance pre-selected.
 
 ### Tags Used for Fields on a Repeating Form 
-* `@INSTANCETABLE_HIDE`: Ignore this field in instance tables.
-* `@INSTANCETABLE_LABEL='column header'`: Provide an alternative column title for the field in instance tables.
+* `@INSTANCETABLE_HIDE`: Ignore this field in instance all tables.
+* `@INSTANCETABLE_LABEL='column header'`: Provide an alternative column title for the field in all instance tables.
 
 ## Example 
 This example shows (on the right-hand side) a form containing three descriptive text fields utilising the `@INSTANCETABLE` action tag. 

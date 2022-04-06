@@ -33,6 +33,9 @@ class InstanceTable extends AbstractExternalModule
         const ACTION_TAG_LABEL = '@INSTANCETABLE_LABEL';
         const ACTION_TAG_SCROLLX = '@INSTANCETABLE_SCROLLX';
         const ACTION_TAG_HIDEADDBTN = '@INSTANCETABLE_HIDEADD'; // i.e. hide "Add" button even if user has edit access to form
+        const ACTION_TAG_HIDEINSTANCECOL = '@INSTANCETABLE_HIDEINSTANCECOL'; // i.e. hide the "#" column containing instance numbers
+        const ACTION_TAG_VARLIST = '@INSTANCETABLE_VARLIST'; // provide a comma-separated list of variables to include (not including any tagged HIDE)
+        const ACTION_TAG_PAGESIZE = '@INSTANCETABLE_PAGESIZE'; // Override default choices for page sizing: specify integer default page size, use -1 for All
         const ACTION_TAG_REF = '@INSTANCETABLE_REF';
         const ACTION_TAG_SRC = '@INSTANCETABLE_SRC'; // deprecated
         const ACTION_TAG_DST = '@INSTANCETABLE_DST'; // deprecated
@@ -52,7 +55,32 @@ class InstanceTable extends AbstractExternalModule
                 $this->user_rights = &$user_rights;
                 $this->isSurvey = (PAGE==='surveys/index.php');
         }
-        
+
+        /**
+         * redcap_save_record
+         * When saving an instance in the popup, get &extmod_instance_table=1 into the redirect link e.g. when missing required fields found
+         */
+        public function redcap_save_record($project_id, $record=null, $instrument, $event_id, $group_id=null, $survey_hash=null, $response_id=null, $repeat_instance=1) {
+                if (isset($_GET['extmod_instance_table']) && $_GET['extmod_instance_table']=='1') {
+                        $_GET['instance'] .= '&extmod_instance_table=1';
+                }
+        }
+
+        /**
+         * redcap_every_page_before_render
+         * When doing Save & Exit or Delete Instance from popup then persist a flag on the session.
+         * If Record Home page is loading when this flag is present then window.close() 
+         * @param type $project_id
+         */
+        public function redcap_every_page_top($project_id) {
+                if (PAGE==='DataEntry/record_home.php' && isset($_GET['id']) && isset($_SESSION['extmod_closerec_home']) && $_GET['id']==$_SESSION['extmod_closerec_home']) {
+                        ?>
+                        <script type="text/javascript">/* EM Instance Table */ window.close();</script>
+                        <?php
+                        unset($_SESSION['extmod_closerec_home']);
+                }
+        }
+    
         public function redcap_data_entry_form_top($project_id, $record, $instrument, $event_id, $group_id, $repeat_instance) {
                 $this->initHook($record, $instrument, $event_id, false, $group_id, $repeat_instance);
                 $this->pageTop();
@@ -66,13 +94,6 @@ class InstanceTable extends AbstractExternalModule
         public function redcap_survey_page_top($project_id, $record, $instrument, $event_id, $group_id, $survey_hash, $response_id, $repeat_instance) {
                 $this->initHook($record, $instrument, $event_id, true, $group_id, $repeat_instance);
                 $this->pageTop();
-        }
-        
-        public function redcap_save_record($project_id, $record=null, $instrument, $event_id, $group_id=null, $survey_hash=null, $response_id=null, $repeat_instance=1) {
-                // if saving an instance in the popup, get &extmod_instance_table=1 into the redirect link e.g. when missing required fields found
-                if (isset($_GET['extmod_instance_table']) && $_GET['extmod_instance_table']=='1') {
-                        $_GET['instance'] .= '&extmod_instance_table=1';
-                }
         }
         
         protected function initHook($record, $instrument, $event_id, $isSurvey=false, $group_id, $repeat_instance) {
@@ -144,25 +165,73 @@ class InstanceTable extends AbstractExternalModule
                                 // e.g. when multiple medications are recorded on each visit (of which there can also be multiple),
                                 // the medications shown in the instance table on a visit instance should be filtered by their relationship with that visit instance
                                 $filter = '';
+                                $matches = array();
                                 $this->defaultValueForNewPopup = '';
                                 if (preg_match("/".self::ACTION_TAG_REF."\s*=\s*'?((\w+_arm_\d+[a-z]?:)?\w+)'?\s?/", $fieldDetails['field_annotation'], $matches)) {
-                                    $join_val  = ($this->repeat_instance == null || empty($this->repeat_instance))
-                                        ? 1 : $this->repeat_instance;
-                                    $filter  = "[" . trim($matches[1]) ."]='" .$join_val."'";
-                                    $this->defaultValueForNewPopup = '&parent_instance='.$join_val;
-                                    $repeatingFormDetails['form_ref'] = trim($matches[1]);
+                                        $join_val  = ($this->repeat_instance == null || empty($this->repeat_instance))
+                                            ? 1 : $this->repeat_instance;
+                                        $linkField = trim($matches[1]);
+                                        $filter  = "[" . $linkField ."]='" .$join_val."'";
+                                        $repeatingFormDetails['link_field'] = $linkField;
+                                        $repeatingFormDetails['link_instance'] = $join_val;
                                 }
                                 // keep legacy support for _SRC and _DST tags but any in use should be converted to _REF tags
+                                $matches = array();
                                 if (preg_match("/".self::ACTION_TAG_SRC."='?((\w+_arm_\d+[a-z]?:)?\w+)'?\s?/", $fieldDetails['field_annotation'], $matches)) {
-                                    $recordData = REDCap::getData('array', $this->record, $matches[1], $this->event_id, null, false, false, false, null, false); // export raw
-                                    $join_val  = $recordData[1]['repeat_instances'][$this->event_id][$this->instrument][$this->repeat_instance][$matches[1]];
-                                    if (preg_match("/".self::ACTION_TAG_DST."='?((\w+_arm_\d+[a-z]?:)?\w+)'?\s?/", $fieldDetails['field_annotation'], $matches)) {
-                                        $filter  = "[" . $matches[1] ."]='" .$join_val."'";
-                                    }
+                                        $recordData = REDCap::getData('array', $this->record, $matches[1], $this->event_id, null, false, false, false, null, false); // export raw
+                                        $join_val  = $recordData[1]['repeat_instances'][$this->event_id][$this->instrument][$this->repeat_instance][$matches[1]];
+                                        if (preg_match("/".self::ACTION_TAG_DST."='?((\w+_arm_\d+[a-z]?:)?\w+)'?\s?/", $fieldDetails['field_annotation'], $matches)) {
+                                               $filter  = "[" . $matches[1] ."]='" .$join_val."'";
+                                        }
                                 }
 
+                                // pick up option for hiding instance col
+                                $matches = array();
+                                if (preg_match("/".self::ACTION_TAG_HIDEINSTANCECOL."\s?/", $fieldDetails['field_annotation'], $matches)) {
+                                        $repeatingFormDetails['show_instance_col'] = false;
+                                } else {
+                                        $repeatingFormDetails['show_instance_col'] = true;
+                                }
+
+                                // pick up option for page size override
+                                $matches = array();
+                                if (preg_match("/".self::ACTION_TAG_PAGESIZE."\s*=\s*'?(-?\d+)'?\s?/", $fieldDetails['field_annotation'], $matches)) {
+                                        $pageSize = intval($matches[1]);
+                                        if ($pageSize < -1) {
+                                            $pageSize = -1;
+                                        }
+                                        $repeatingFormDetails['page_size'] = $pageSize;
+                                } else {
+                                        $repeatingFormDetails['page_size'] = 0;
+                                }
+
+                                // make column list for table: all form vars or supplied list, remove any with @INSTANCETABLE_HIDE
+                                $repeatingFormFields = REDCap::getDataDictionary('array', false, null, $formName);
+                                $includeVars = $requestedVars = $matches = array();
+                                if (preg_match("/".self::ACTION_TAG_VARLIST."\s*=\s*'?([a-z][a-z0-9_]*(,[a-z][a-z0-9_]*)*)'?\s?/", $fieldDetails['field_annotation'], $matches)) {
+                                        $requestedVars = explode(',',trim($matches[1]));
+                                        $includeVars = array_intersect($requestedVars, array_keys($repeatingFormFields));
+                                } else {
+                                        $includeVars = array_keys($repeatingFormFields);
+                                }
+                
+                                foreach ($includeVars as $idx => $fieldName) {
+                                        // remove descriptive text fields
+                                        if ($repeatingFormFields[$fieldName]['field_type']==='descriptive') { 
+                                                unset($includeVars[$idx]);
+                                        } else {
+                                                // ignore fields tagged @FORMINSTANCETABLE_HIDE
+                                                $matches = array();
+                                                if (preg_match("/".self::ACTION_TAG_HIDE_FIELD."/", $repeatingFormFields[$fieldName]['field_annotation'])) {
+                                                       unset($includeVars[$idx]);
+                                                }
+                                        }
+                                }
+                                reset($includeVars);
+                                $repeatingFormDetails['var_list'] = $includeVars;
+
                                 $ajaxUrl = $this->getUrl('instance_table_ajax.php');
-                                $repeatingFormDetails['ajax_url'] = $ajaxUrl."&record={$this->record}&event_id=$eventId&form_name=$formName&filter=$filter";
+                                $repeatingFormDetails['ajax_url'] = $ajaxUrl."&record={$this->record}&event_id=$eventId&form_name=$formName&filter=$filter&fields=".implode('|',$includeVars);
                                 $repeatingFormDetails['markup'] = '';
 
                                 if (preg_match("/".self::ACTION_TAG_SCROLLX."/", $fieldDetails['field_annotation'], $matches)) {
@@ -187,6 +256,10 @@ class InstanceTable extends AbstractExternalModule
                         if (!$this->Proj->isRepeatingFormOrEvent($repeatingFormDetails['event_id'], $repeatingFormDetails['form_name'])) {
                                 $repeatingFormDetails['permission_level'] = -1; // error
                         }
+                        if ($this->Proj->isRepeatingEvent($this->event_id) && $this->event_id == $repeatingFormDetails['event_id']) {
+                            $repeatingFormDetails['permission_level'] = -1; // error (current event is repeating, form in repeating event cannot be a repeating form)
+                        }
+                    
                         $this->taggedFields[$key] = $repeatingFormDetails;
                 }
         }
@@ -214,10 +287,10 @@ class InstanceTable extends AbstractExternalModule
                 foreach ($this->taggedFields as $key => $repeatingFormDetails) {
                         switch ($repeatingFormDetails['permission_level']) {
                                 case 1: // view & edit
-                                        $repeatingFormDetails['markup'] = $this->makeHtmlTable($repeatingFormDetails['html_table_id'], $repeatingFormDetails['html_table_class'], $repeatingFormDetails['event_id'], $repeatingFormDetails['form_name'], true, $repeatingFormDetails['scroll_x']);
+                                        $repeatingFormDetails['markup'] = $this->makeHtmlTable($repeatingFormDetails, true);
                                         break;
                                 case '2': // read only
-                                        $repeatingFormDetails['markup'] = $this->makeHtmlTable($repeatingFormDetails['html_table_id'], $repeatingFormDetails['html_table_class'], $repeatingFormDetails['event_id'], $repeatingFormDetails['form_name'], false, $repeatingFormDetails['scroll_x']);
+                                        $repeatingFormDetails['markup'] = $this->makeHtmlTable($repeatingFormDetails, false);
                                         break;
                                 case '0': // no access
                                         $repeatingFormDetails['markup'] = self::ERROR_NO_VIEW_ACCESS;
@@ -235,7 +308,16 @@ class InstanceTable extends AbstractExternalModule
                 }
         }
         
-        protected function makeHtmlTable($tableElementId, $tableFormClass, $eventId, $formName, $canEdit, $scrollX=false) {
+        protected function makeHtmlTable($repeatingFormDetails, $canEdit) {
+                $tableElementId = $repeatingFormDetails['html_table_id'];
+                $tableFormClass = $repeatingFormDetails['html_table_class'];
+                $eventId = $repeatingFormDetails['event_id'];
+                $formName = $repeatingFormDetails['form_name'];
+                $scrollX = $repeatingFormDetails['scroll_x'];
+                $linkField = $repeatingFormDetails['link_field'];
+                $linkValue = $repeatingFormDetails['link_instance'];
+                $varList = $repeatingFormDetails['var_list'];
+
                 $scrollStyle = ($scrollX) ? "max-width:790px;" : "";
                 $nColumns = 1; // start at 1 for # (Instance) column
                 $html = '<div class="" style="margin-top:10px; margin-bottom:'.self::ADD_NEW_BTN_YSHIFT.';">';
@@ -243,19 +325,12 @@ class InstanceTable extends AbstractExternalModule
                 $html .= '<thead><tr><th>#</th>'; // .$this->lang['data_entry_246'].'</th>'; // Instance
                 
                 $repeatingFormFields = REDCap::getDataDictionary('array', false, null, $formName);
-                
-                foreach ($repeatingFormFields as $repeatingFormFieldDetails) {
-                        // ignore descriptive text fields and fields tagged @FORMINSTANCETABLE_HIDE
-                        $matches = array();
-                        if ($repeatingFormFieldDetails['field_type']!=='descriptive') {
-                                if (!preg_match("/".self::ACTION_TAG_HIDE_FIELD."/", $repeatingFormFieldDetails['field_annotation'])) {
-                                    $matches = array();
-                                    $relabel = preg_match("/".self::ACTION_TAG_LABEL."='(.+)'/", $repeatingFormFieldDetails['field_annotation'], $matches);
-                                    $colHeader = ($relabel) ? $matches[1] : $repeatingFormFieldDetails['field_label'];
-                                    $html .= "<th>$colHeader</th>";
-                                    $nColumns++;
-                                }
-                        }
+
+                foreach ($varList as $var) {
+                        $relabel = preg_match("/".self::ACTION_TAG_LABEL."='(.+)'/", $repeatingFormFields[$var]['field_annotation'], $matches);
+                        $colHeader = ($relabel) ? $matches[1] : $repeatingFormFields[$var]['field_label'];
+                        $html .= "<th>$colHeader</th>";
+                        $nColumns++;
                 }
                 if (!$this->isSurvey) {
                         $html.='<th>Form Status</th>'; // "Form Status" wording is hardcoded in MetaData::save_metadata()
@@ -266,12 +341,13 @@ class InstanceTable extends AbstractExternalModule
 
                 // if survey form get data now (as have no auth for an ajax call)
                 if ($this->isSurvey) {
+                        $filter =  "[$linkField]='$linkValue'";
                         $html.='<tbody>';
-                        $instanceData = $this->getInstanceData($this->record, $eventId, $formName, null,false);
+                        $instanceData = $this->getInstanceData($this->record, $eventId, $formName, $varList, $filter, false);
                         if (count($instanceData)===0) {
                                 $html.='<tr><td colspan="'.$nColumns.'">No data available in table</td></tr>';
                         } else {
-                                foreach ($instanceData as $row => $rowValues) {
+                                foreach ($instanceData as $rowValues) {
                                         $html.='<tr>';
                                         foreach ($rowValues as $value) {
                                                 $html.="<td>$value</td>";
@@ -285,77 +361,72 @@ class InstanceTable extends AbstractExternalModule
                 $html.='</table>';
 
                 if ($canEdit) {
-                        $html.='<div style="position:relative;top:'.self::ADD_NEW_BTN_YSHIFT.';margin-bottom:5px;"><button type="button" class="btn btn-sm btn-success " onclick="'.self::MODULE_VARNAME.'.addNewInstance(\''.$this->record.'\','.$eventId.',\''.$formName.'\');"><span class="fas fa-plus-circle" aria-hidden="true"></span>&nbsp;'.$this->lang['data_entry_247'].'</button></div>'; // Add new
+                        $html.='<div style="position:relative;top:'.self::ADD_NEW_BTN_YSHIFT.';margin-bottom:5px;"><button type="button" class="btn btn-sm btn-success " onclick="'.self::MODULE_VARNAME.'.addNewInstance(\''.$this->record.'\','.$eventId.',\''.$formName.'\',\''.$linkField.'\',\''.$linkValue.'\');"><span class="fas fa-plus-circle" aria-hidden="true"></span>&nbsp;'.$this->lang['data_entry_247'].'</button></div>'; // Add new
                 }
                 return $html;
         }
         
-        public function getInstanceData($record, $event, $form, $filter, $includeFormStatus=true) {
+        public function getInstanceData($record, $event, $form, $fields, $filter, $includeFormStatus=true) {
                 $instanceData = array();
 
                 $repeatingFormFields = REDCap::getDataDictionary('array', false, null, $form);
 
-                $fieldsNeeded = array();
-                foreach ($repeatingFormFields as $repeatingFormFieldName => $repeatingFormFieldDetails) {
-                        // ignore descriptive text fields and fields tagged @FORMINSTANCETABLE_HIDE
-                        if ($repeatingFormFieldDetails['field_type']!=='descriptive' &&
-                            !preg_match("/".self::ACTION_TAG_HIDE_FIELD."/", $repeatingFormFieldDetails['field_annotation'])) {
-                                $fieldsNeeded[] = $repeatingFormFieldName;
-                        }
-                }
-                if ($includeFormStatus) { $fieldsNeeded[] = $form.'_complete'; }
+                // ignore any supplied fields not on the repeating form 
+                $fields = array_intersect($fields, array_keys($repeatingFormFields));
 
-                $recordData = REDCap::getData('array', $record, $fieldsNeeded, $event, null, false, false, false, $filter, true); // export labels not raw
+                if ($includeFormStatus) { $fields[] = $form.'_complete'; }
+
+                $recordData = REDCap::getData('array', $record, $fields, $event, null, false, false, false, $filter, true); // export labels not raw
 
                 $formKey = ($this->Proj->isRepeatingEvent($event))
                         ? ''     // repeating event - empty string key
                         : $form; // repeating form  - form name key
                         
-              if (!empty($recordData[$record]['repeat_instances'][$event][$formKey])) {
-                foreach ($recordData[$record]['repeat_instances'][$event][$formKey] as $instance => $instanceFieldData) {
-                        $thisInstanceValues = array();
-                        $thisInstanceValues[] = $this->makeInstanceNumDisplay($instance, $record, $event, $form, $instance);
+                if (!empty($recordData[$record]['repeat_instances'][$event][$formKey])) {
+                        foreach ($recordData[$record]['repeat_instances'][$event][$formKey] as $instance => $instanceFieldData) {
+                                $thisInstanceValues = array();
+                                $thisInstanceValues[] = $this->makeInstanceNumDisplay($instance, $record, $event, $form, $instance);
 
-                        foreach ($instanceFieldData as $fieldName => $value) {
-                                if (is_string($value) && trim($value)==='') {
-                                        $thisInstanceValues[] = '';
-                                        continue;
-                                }
-                                
-                                $fieldType = $repeatingFormFields[$fieldName]['field_type'];
-                                
-                                if ($fieldName===$form.'_complete') {
-                                        if ($this->isSurvey) { continue; }
-                                        $outValue = $this->makeFormStatusDisplay($value, $record, $event, $form, $instance);
-                                        
-                                } else if (in_array($fieldType, array("advcheckbox", "radio", "select", "checkbox", "dropdown", "sql", "yesno", "truefalse"))) {
-                                        $outValue = $this->makeChoiceDisplay($value, $repeatingFormFields, $fieldName);
-
-                                } else if ($fieldType==='text') {
-                                        $ontologyOption = $this->Proj->metadata[$fieldName]['element_enum'];
-                                        if ($ontologyOption!=='' && preg_match('/^\w+:\w+$/', $ontologyOption)) {
-                                                // ontology fields are text fields with an element enum like "BIOPORTAL:ICD10"
-                                                list($ontologyService, $ontologyCategory) = explode(':',$ontologyOption,2);
-                                                $outValue = $this->makeOntologyDisplay($value, $ontologyService, $ontologyCategory);
-                                        } else {
-                                                // regular text fields have null element_enum
-                                                $outValue = $this->makeTextDisplay($value, $repeatingFormFields, $fieldName);
+                                foreach ($instanceFieldData as $fieldName => $value) {
+                                        if (trim($value)==='') {
+                                                $thisInstanceValues[] = '';
+                                                continue;
                                         }
                                         
-                                } else if ($fieldType==='file') {
-                                        $outValue = $this->makeFileDisplay($value, $record, $event, $instance, $fieldName);
+                                        $fieldType = $repeatingFormFields[$fieldName]['field_type'];
                                         
-                                } else {
-                                        $outValue = $value;
+                                        if ($fieldName===$form.'_complete') {
+                                                if ($this->isSurvey) { continue; }
+                                                $outValue = $this->makeFormStatusDisplay($value, $record, $event, $form, $instance);
+                                                
+                                        } else if (in_array($fieldType, array("advcheckbox", "radio", "select", "checkbox", "dropdown", "sql", "yesno", "truefalse"))) {
+                                                $outValue = $this->makeChoiceDisplay($value, $repeatingFormFields, $fieldName);
+
+                                        } else if ($fieldType==='text') {
+                                                $ontologyOption = $this->Proj->metadata[$fieldName]['element_enum'];
+                                                if ($ontologyOption!=='' && preg_match('/^\w+:\w+$/', $ontologyOption)) {
+                                                        // ontology fields are text fields with an element enum like "BIOPORTAL:ICD10"
+                                                        list($ontologyService, $ontologyCategory) = explode(':',$ontologyOption,2);
+                                                        $outValue = $this->makeOntologyDisplay($value, $ontologyService, $ontologyCategory);
+                                                } else {
+                                                        // regular text fields have null element_enum
+                                                        $outValue = $this->makeTextDisplay($value, $repeatingFormFields, $fieldName);
+                                                }
+                                                
+                                        } else if ($fieldType==='file') {
+                                                $outValue = $this->makeFileDisplay($value, $record, $event, $instance, $fieldName);
+                                                
+                                        } else {
+                                                $outValue = $value;
+                                        }
+                                        
+                                        $thisInstanceValues[] = $outValue;
                                 }
                                 
-                                $thisInstanceValues[] = $outValue;
+                                $instanceData[] = $thisInstanceValues;
                         }
-                        
-                        $instanceData[] = $thisInstanceValues;
                 }
                 return $instanceData;
-              }
         }
         
         protected function makeOpenPopupAnchor($val, $record, $event, $form, $instance) {
@@ -430,7 +501,7 @@ class InstanceTable extends AbstractExternalModule
                         $outVal = "<a href='mailto:$val'>$val</a>";
                         break;
                     default:
-                        $outVal = htmlentities($val, ENT_QUOTES | ENT_SUBSTITUTE);
+                        $outVal = REDCap::filterHtml($val);;
                         break;
                 }
                 return $outVal;
@@ -452,6 +523,7 @@ class InstanceTable extends AbstractExternalModule
         }
         
         protected function insertJS() {
+                global $lang;
                 ?>
 <style type="text/css">
     .<?php echo self::MODULE_VARNAME;?> tbody tr { font-weight:normal; }
@@ -460,26 +532,42 @@ class InstanceTable extends AbstractExternalModule
 </style>
 <script type="text/javascript">
 'use strict';
-var <?php echo self::MODULE_VARNAME;?> = (function(window, document, $, app_path_webroot, pid, simpleDialog, undefined) { // var MCRI_FormInstanceTable ...
+var <?php echo self::MODULE_VARNAME;?> = (function(window, document, $, app_path_webroot, pid, simpleDialog, undefined) { // var MCRI_InstanceTable ...
     var isSurvey = <?php echo ($this->isSurvey)?'true':'false';?>;
     var tableClass = '<?php echo self::MODULE_VARNAME;?>';
     var langYes = '<?php echo js_escape($this->lang['design_100']);?>';
     var langNo = '<?php echo js_escape($this->lang['design_99']);?>';
     var config = <?php echo json_encode($this->taggedFields, JSON_PRETTY_PRINT);?>;
     var taggedFieldNames = [];
-        var defaultValueForNewPopup = '<?php echo js_escape($this->defaultValueForNewPopup);?>';
+    var lengthVal;
+    var lengthLbl;
 
     function init() {
         config.forEach(function(taggedField) {
             taggedFieldNames.push(taggedField.field_name);
             $('#'+taggedField.field_name+'-tr td:last')
                     .append(taggedField.markup);
+            switch(taggedField.page_size) {
+                case 0:
+                    lengthVal = [10, 25, 50, 100, -1];
+                    lengthLbl = [10, 25, 50, 100, "<?=$lang['docs_44']?>"]; // "ALL"
+                    break;
+                case -1:
+                    lengthVal = [-1];
+                    lengthLbl = ["<?=$lang['docs_44']?>"]; // "ALL"
+                    break;
+                default:
+                    lengthVal = lengthLbl = [taggedField.page_size];
+            } 
             var thisTbl = $('#'+taggedField.html_table_id)
                     .DataTable( {
                         "stateSave": true,
                         "stateDuration": 0,
-                        "lengthMenu": [[10, 25, 50, 100, -1], [10, 25, 50, 100, "All"]]
+                        "lengthMenu": [lengthVal, lengthLbl]
                     } );
+            if (!taggedField.show_instance_col) {
+                thisTbl.column( 0 ).visible( false );
+            }
             if (!isSurvey) {
                 thisTbl.ajax.url(taggedField.ajax_url).load();
             }
@@ -499,7 +587,7 @@ var <?php echo self::MODULE_VARNAME;?> = (function(window, document, $, app_path
     });
 
     function instancePopup(title, record, event, form, instance) {
-        var url = app_path_webroot+'DataEntry/index.php?pid='+pid+'&id='+record+'&event_id='+event+'&page='+form+'&instance='+instance+'&extmod_instance_table=1'+defaultValueForNewPopup;
+        var url = app_path_webroot+'DataEntry/index.php?pid='+pid+'&id='+record+'&event_id='+event+'&page='+form+'&instance='+instance+'&extmod_instance_table=1';
         popupWindow(url,title,window,700,950);
           //refreshTableDialog(event, form);
         return false;
@@ -525,8 +613,9 @@ var <?php echo self::MODULE_VARNAME;?> = (function(window, document, $, app_path
     }
 
     return {
-        addNewInstance: function(record, event, form) {
-            instancePopup('Add instance', record, event, form, '1&extmod_instance_table_add_new=1');
+        addNewInstance: function(record, event, form, linkFld, linkIns) {
+            var ref = (linkFld=='')?'':'&link_field='+linkFld+'&link_instance='+linkIns;
+            instancePopup('Add instance', record, event, form, '1&extmod_instance_table_add_new=1'+ref);
             return false;
         },
         editInstance: function(record, event, form, instance) {
@@ -537,7 +626,7 @@ var <?php echo self::MODULE_VARNAME;?> = (function(window, document, $, app_path
       })(window, document, jQuery, app_path_webroot, pid, simpleDialog);
 
     function refreshTables() {
-        // refresh immediately , just in case the server has already processed the saveData call
+        // refresh immediately , just in case the server has already processed the save/delete call
         actuallyRefreshTables();
         // now start a timer and try it again after a second, to give the server ample time to persist the data
         window.setTimeout( actuallyRefreshTables(), 1500);
@@ -563,150 +652,150 @@ var <?php echo self::MODULE_VARNAME;?> = (function(window, document, $, app_path
          * - Save & Go To Next Record button
          */
         protected function popupViewTweaks() {
-                ?>
-                <style type="text/css">
-                    .navbar-toggler, #west, #formSaveTip, #dataEntryTopOptionsButtons, #formtop-div { display: none !important; }
-                    /*div[aria-describedby="reqPopup"] > .ui-dialog-buttonpane > button { color:red !important; visibility: hidden; }*/
-                </style>
+            global $lang, $longitudinal, $Proj, $user_rights;
+
+            $record = \htmlspecialchars($_GET['id'], ENT_QUOTES);
+            $delFormAlertMsg = ($longitudinal) ? RCView::tt("data_entry_243") : RCView::tt("data_entry_239");
+			if (isset($Proj->forms[$_GET['page']]['survey_id']) && $user_rights['forms'][$_GET['page']] == '3' && isset($_GET['editresp'])) {
+				$delFormAlertMsg .= RCView::div(array('style'=>'margin-top:15px;color:#C00000;'), RCView::tt("data_entry_241"));
+			}
+            $delFormAlertMsg .= RCView::div(array('style'=>'margin-top:15px;color:#C00000;'), RCView::tt_i("data_entry_559", array($_GET['instance'])));
+			$delFormAlertMsg .= RCView::div(array('style'=>'margin-top:15px;color:#C00000;font-weight:bold;'), RCView::tt("data_entry_190"));
+            $delFormAlertMsg = js_escape($delFormAlertMsg, true);
+
+            ?>
+<style type="text/css">
+    .navbar-toggler, #west, #formSaveTip, #dataEntryTopOptionsButtons, #formtop-div { display: none !important; }
+    /*div[aria-describedby="reqPopup"] > .ui-dialog-buttonpane > button { color:red !important; visibility: hidden; }*/
+    #submit-btn-savenextform, #submit-btn-saveexitrecord, #submit-btn-savenextrecord { display: none; }
+</style>
 <script type="text/javascript">
-
-$.urlParamReplace = function (url, name, value) {
-  var results = new RegExp('[\?&]' + name + '=([^&#]*)')
-    .exec(url);
-  if (results !== null) {
-    return url.replace(name + '=' + results[1], name + '=' + value);
-  } else {
-    return url;
-  }
-}
-
-$.urlParamValue = function (url, name) {
-  var results = new RegExp('[\?&]' + name + '=([^&#]*)')
-    .exec(url);
-  if (results !== null) {
-    return results[1];
-  }
-  return null;
-}
-
-$.redirectUrl = function (url) {
-  window.location.href = url;
-  return;
-}
-
-$(document).ready(function () {
-  // add this window.unload for added reliability in invoking refreshTables on close of popup
-  window.onunload = function () {
-    window.opener.refreshTables();
-  };
-
-  $('#form').attr('action', $('#form').attr('action') + '&extmod_instance_table=1');
-  $('button[name=submit-btn-saverecord]')// Save & Close
-    .attr('name', 'submit-btn-savecontinue')
-    .removeAttr('onclick')
-    .click(function (event) {
-      dataEntrySubmit(this);
-      event.preventDefault();
-      window.opener.refreshTables();
-      window.setTimeout(window.close, 800);
-    });
-  /* highjacking existing buttons for custom functionality*/
-  $('#submit-btn-savenextform')
-    // Save & New Instance
-    // default redcap behavior does not always have this option available
-    .attr('name', 'submit-btn-savecontinue')
-    .removeAttr('onclick')
-    .text(<?php echo "'" . $this->lang['data_entry_275'] . "'"?>)
-    .click(function (event) {
-      var currentUrl = window.location.href;
-      dataEntrySubmit(this);
-      event.preventDefault();
-      window.opener.refreshTables();
-      var redirectUrl = $.urlParamReplace(currentUrl, "instance", 1)
-        + '&extmod_instance_table_add_new=1';
-      window.setTimeout($.redirectUrl, 500, redirectUrl);
-    });
-  $('#submit-btn-savenextinstance')
-    // Save and Next Instance -- go to next instance of same parent
-    // default redcap behavior goes to next instance, regardless of parent.
-    .attr('name', 'submit-btn-savecontinue')
-    .removeAttr('onclick')
-    .text(<?php echo "'" . $this->lang['data_entry_276'] . "'"?>)
-    .click(function (event) {
-      var currentUrl = window.location.href;
-      dataEntrySubmit(this);
-      event.preventDefault();
-      window.opener.refreshTables();
-      var next = $.urlParamValue(currentUrl, "next_instance");
-      var redirectUrl = currentUrl;
-      if (next == null) {
-        redirectUrl = currentUrl + '&next_instance=1';
-      } else {
-        redirectUrl = $.urlParamReplace(redirectUrl, "next_instance", parseInt(next) + 1);
-      }
-      window.setTimeout($.redirectUrl, 500, redirectUrl);
-    });
-  $('#submit-btn-saveexitrecord').css("display", "none");
-  $('#submit-btn-savenextrecord').css("display", "none");
-  $('button[name=submit-btn-cancel]')
-    .removeAttr('onclick')
-    .click(function () {
-      window.opener.refreshTables();
-      window.close();
-    });
-    <?php
-    if ( isset($_GET['extmod_instance_table_add_new'])) {
-    ?>
-  $('button[name=submit-btn-deleteform]').css("display", "none");
-    <?php
-    } else {
-    ?>
-  $('button[name=submit-btn-deleteform]')
-    .removeAttr('onclick')
-    .click(function (event) {
-      simpleDialog('<div style="margin:10px 0;font-size:13px;">' +
-          <?php echo '"' . $this->lang['data_entry_239'] .
-              '<div style=&quot;margin-top:15px;color:#C00000;&quot;>' .
-              $this->lang['data_entry_432'] . ' <b>' . $_GET['instance'] . '</b></div> ' .
-           
-              '<div style=&quot;margin-top:15px;color:#C00000;font-weight:bold;&quot;>' .
-              $this->lang['data_entry_190'] . '</div> </div>"'?>,
-        'DELETE ALL DATA ON THIS FORM?', null, 600, null,
-        'Cancel',
-        function () {
-          dataEntrySubmit(document.getElementsByName('submit-btn-deleteform')[0]);
-          event.preventDefault();
-          window.opener.refreshTables();
-          window.setTimeout(window.close, 300);
-        },
-          <?php echo "'" . $this->lang['data_entry_234'] . "'"?>);//Delete data for THIS FORM only
-      return false;
-    });
-    <?php
+    /* EM Instance Table JS */
+    $.urlParamReplace = function (url, name, value) {
+        var results = new RegExp('[\?&]' + name + '=([^&#]*)').exec(url);
+        if (results !== null) {
+            return url.replace(name + '=' + results[1], name + '=' + value);
+        } else {
+            return url;
+        }
     }
-    if (isset($_GET['__reqmsg'])) {
-    ?>
-  setTimeout(function () {
-    $('div[aria-describedby="reqPopup"]').find('div.ui-dialog-buttonpane').find('button').not(':last').hide(); // .css('visibility', 'visible'); // required fields message show only "OK" button, not ignore & leave
-  }, 100);
-    <?php
+
+    $.urlGetParam = function (param_name) {
+        var results = new RegExp('[\?&]' + param_name + '=([^&#]*)').exec(window.location.href);
+        if (results !== null) {
+            return results[1];
+        } else {
+            return null;
+        }
     }
-    ?>
-});
+
+    $.redirectUrl = function(url) {
+        window.location.href = url;
+        return;
+    }
+
+    $(document).ready(function() {
+        // add this window.unload for added reliability in invoking refreshTables on close of popup
+        window.onunload = function(){window.opener.refreshTables();};
+        $('#form').attr('action',$('#form').attr('action')+'&extmod_instance_table=1');
+
+        // set default value of ref field, if supplied
+        var linkField = $.urlGetParam('link_field');
+        if (linkField!==null) {
+            var linkInput = $('[name='+linkField+']');
+            if (linkInput.length) {
+                $(linkInput).val($.urlGetParam('link_instance'));
+            }
+        }
+
+        // changes to save/cancel/delete buttons in popup window
+        $('button[name=submit-btn-saverecord]')// Save & Close
+            .removeAttr('onclick')
+            .click(function(event) {
+                $('#form').append('<input type="hidden" name="extmod_closerec_home" value="<?=$record?>">');
+                event.preventDefault();
+                window.opener.refreshTables();
+                dataEntrySubmit(this);
+            });
+        $('#submit-btn-savenextinstance')// Save & Next Instance (not necessarily a new instance)
+            .attr('name', 'submit-btn-savecontinue')
+            .removeAttr('onclick')
+            .click(function(event) {
+                var currentUrl = window.location.href;
+                var redirectUrl = $.urlParamReplace(currentUrl, "instance", 1+(1*$.urlGetParam("instance")));
+                event.preventDefault();
+                window.opener.refreshTables();
+                dataEntrySubmit(this);
+                window.setTimeout($.redirectUrl, 500, redirectUrl);
+            });
+        $('button[name=submit-btn-cancel]')
+            .removeAttr('onclick')
+            .click(function() {
+                window.opener.refreshTables();
+                window.close();
+            });
+                    <?php
+                    if ( isset($_GET['extmod_instance_table_add_new'])) {
+                    ?>
+            $('button[name=submit-btn-deleteform]').css("display", "none");
+                    <?php
+                    } else {
+                    ?>
+            $('button[name=submit-btn-deleteform]')
+            .removeAttr('onclick')
+            .click(function(event) {
+                $('#form').append('<input type="hidden" name="extmod_closerec_home" value="<?=$record?>">');
+                simpleDialog(
+                    '<div style="margin:10px 0;font-size:13px;"><?=$delFormAlertMsg?></div>',
+                    '<?=$lang['data_entry_237']?> \"<?=$record?>\"<?=$lang['questionmark']?>'
+                    ,null,600,null,lang.global_53,
+                    function(){
+                        event.preventDefault();
+                        window.opener.refreshTables();
+                        dataEntrySubmit( 'submit-btn-deleteform' );
+                    },
+                    '<?=$lang['data_entry_234']?>' //'Delete data for THIS FORM only'
+                );
+                return false;
+            });
+                    <?php
+                    }
+                    if (isset($_GET['__reqmsg'])) {
+                    ?>
+                setTimeout(function() {
+                    $('div[aria-describedby="reqPopup"]').find('div.ui-dialog-buttonpane').find('button').not(':last').hide(); // .css('visibility', 'visible'); // required fields message show only "OK" button, not ignore & leave
+                }, 100);
+                    <?php
+            }
+                    ?>
+    });
 </script>
-        <?php
+                <?php
         }
         
         /**
-         * - Augment the action_tag_explain content on project Design pages by
-         * adding some additional tr following the last built-in action tag.
-         * - If adding a new instance, read the current max instance and redirect
-         * to a form with instance value current + 1
+         * redcap_every_page_before_render
+         * - When doing Save & Exit or Delete Instance from popup then persist a flag on the session so can close popup on record home page.
+         * - If adding a new instance, read the current max instance and redirect to a form with instance value current + 1
+         * - Augment the action_tag_explain content on project Design pages by adding some additional tr following the last built-in action tag.
          * @param type $project_id
          */
         public function redcap_every_page_before_render($project_id) {
-                if (PAGE==='Design/action_tag_explain.php') {
+                if (isset($_POST['extmod_closerec_home'])) {
+                        $_SESSION['extmod_closerec_home'] = $_POST['extmod_closerec_home'];
 
+                } else if (PAGE==='DataEntry/index.php' && isset($_GET['extmod_instance_table']) && isset($_GET['extmod_instance_table_add_new'])) {
+                        // adding new instance - read current max and redirect to + 1
+                        $formKey = ($this->Proj->isRepeatingEvent($_GET['event_id']))
+                                ? ''             // repeating event - empty string key
+                                : $_GET['page']; // repeating form  - form name key
+
+                        $recordData = REDCap::getData('array',$_GET['id'],$_GET['page'].'_complete',$_GET['event_id']);
+                        
+                        $currentInstances = array_keys($recordData[$_GET['id']]['repeat_instances'][$_GET['event_id']][$formKey]);
+                        $_GET['instance'] = 1 + end($currentInstances);
+
+                } else if (PAGE==='Design/action_tag_explain.php') {
                         $lastActionTagDesc = end(Form::getActionTags());
 
                         // which $lang element is this?
@@ -716,55 +805,7 @@ $(document).ready(function () {
                         $lastActionTagDesc .= $this->makeTagTR(static::ACTION_TAG, static::ACTION_TAG_DESC);
                         
                         $this->lang[$langElement] = rtrim(rtrim(rtrim(trim($lastActionTagDesc), '</tr>')),'</td>');
-                } else if (PAGE==='DataEntry/index.php' && isset($_GET['extmod_instance_table']) && isset($_GET['extmod_instance_table_add_new'])) {
-                        // adding new instance - read current max and redirect to + 1
-                        $formKey = ($this->Proj->isRepeatingEvent($_GET['event_id']))
-                                ? ''             // repeating event - empty string key
-                                : $_GET['page']; // repeating form  - form name key
-
-                        $recordData = REDCap::getData('array',$_GET['id'],$_GET['page'].'_complete',$_GET['event_id']);
-                        
-                        if (!empty($recordData[$_GET['id']]['repeat_instances'][$_GET['event_id']][$formKey])) {
-                                $currentInstances = array_keys($recordData[$_GET['id']]['repeat_instances'][$_GET['event_id']][$formKey]);
-                                $_GET['instance'] = 1 + end($currentInstances);
-                        } else {
-                                $_GET['instance'] = 1;
-                        }
-
-                } else if (PAGE === 'DataEntry/index.php' && isset($_GET['extmod_instance_table']) && isset($_GET['next_instance'])) {
-                        // if "Save & Next" instance is clicked, but next instance belongs to a different parent,
-                        // then redirect to a new form
-                        $formKey = ($this->Proj->isRepeatingEvent($_GET['event_id']))
-                            ? ''             // repeating event - empty string key
-                            : $_GET['page']; // repeating form  - form name key
-                        $this->setTaggedFields();
-            
-                        $formRef = '';
-                        foreach ($this->taggedFields as $key => $repeatingFormDetails) {
-                            if ($repeatingFormDetails['form_name'] === $formKey) {
-                                $formRef = $repeatingFormDetails['form_ref'];
-                                break;
-                            }
-                        }
-                        $recordData = REDCap::getData('array', $_GET['id'], $formRef, $_GET['event_id'], null, false, false
-                            , false, '[' . $formRef . ']="' . $_GET['parent_instance'] . '"');
-            
-                        $currentInstances = array_keys($recordData[$_GET['id']]['repeat_instances'][$_GET['event_id']][$formKey]);
-                        if ($_GET['instance'] === end($currentInstances)) {
-                            // it's the last instance for this parent, so get the max instance of all the child instances and add 1
-                            $recordData = REDCap::getData('array', $_GET['id'], $_GET['page'] . '_complete', $_GET['event_id']);
-                            $currentInstances = array_keys($recordData[$_GET['id']]['repeat_instances'][$_GET['event_id']][$formKey]);
-                            $_GET['instance'] = 1 + end($currentInstances);
-                        } else {
-                            // find the next instance after this instance
-                            $key = array_search($_GET['instance'], $currentInstances);
-                            if ($key + $_GET['next_instance'] > count($currentInstances)) {
-                                $_GET['instance'] = 1 + end($currentInstances);
-                            } else {
-                                $_GET['instance'] = $currentInstances[$key + $_GET['next_instance']];
-                            }
-                        }
-                }
+            }
         }
   
         /**
@@ -776,19 +817,19 @@ $(document).ready(function () {
          * @return type
          */
         protected function makeTagTR($tag, $description) {
-            global $isAjax;
-            return RCView::tr(array(),
-                RCView::td(array('class'=>'nowrap', 'style'=>'text-align:center;background-color:#f5f5f5;color:#912B2B;padding:7px 15px 7px 12px;font-weight:bold;border:1px solid #ccc;border-bottom:0;border-right:0;'),
-                    ((!$isAjax || (isset($_POST['hideBtns']) && $_POST['hideBtns'] == '1')) ? '' :
-                        RCView::button(array('class'=>'btn btn-xs btn-rcred', 'style'=>'', 'onclick'=>"$('#field_annotation').val(trim('".js_escape($tag)." '+$('#field_annotation').val())); highlightTableRowOb($(this).parentsUntil('tr').parent(),2500);"), $this->lang['design_171'])
+                global $isAjax;
+                return RCView::tr(array(),
+                    RCView::td(array('class'=>'nowrap', 'style'=>'text-align:center;background-color:#f5f5f5;color:#912B2B;padding:7px 15px 7px 12px;font-weight:bold;border:1px solid #ccc;border-bottom:0;border-right:0;'),
+                        ((!$isAjax || (isset($_POST['hideBtns']) && $_POST['hideBtns'] == '1')) ? '' :
+                            RCView::button(array('class'=>'btn btn-xs btn-rcred', 'style'=>'', 'onclick'=>"$('#field_annotation').val(trim('".js_escape($tag)." '+$('#field_annotation').val())); highlightTableRowOb($(this).parentsUntil('tr').parent(),2500);"), $this->lang['design_171'])
+                        )
+                    ) .
+                    RCView::td(array('class'=>'nowrap', 'style'=>'background-color:#f5f5f5;color:#912B2B;padding:7px;font-weight:bold;border:1px solid #ccc;border-bottom:0;border-left:0;border-right:0;'),
+                        $tag
+                    ) .
+                    RCView::td(array('style'=>'font-size:12px;background-color:#f5f5f5;padding:7px;border:1px solid #ccc;border-bottom:0;border-left:0;'),
+                                        '<i class="fas fa-cube mr-1"></i>'.$description
                     )
-                ) .
-                RCView::td(array('class'=>'nowrap', 'style'=>'background-color:#f5f5f5;color:#912B2B;padding:7px;font-weight:bold;border:1px solid #ccc;border-bottom:0;border-left:0;border-right:0;'),
-                    $tag
-                ) .
-                RCView::td(array('style'=>'font-size:12px;background-color:#f5f5f5;padding:7px;border:1px solid #ccc;border-bottom:0;border-left:0;'),
-                                    '<i class="fas fa-cube mr-1"></i>'.$description
-                )
-            );
+                );
         }
 }
