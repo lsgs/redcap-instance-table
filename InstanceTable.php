@@ -13,7 +13,6 @@ use RCView;
 use UIState;
 use REDCap;
 
-
 class InstanceTable extends AbstractExternalModule
 {
     protected $isSurvey=false;
@@ -648,7 +647,7 @@ class InstanceTable extends AbstractExternalModule
 
           $(document).ready(function() {
             init();
-          });
+    });
 
           function instancePopup(title, record, event, form, instance) {
             var url = app_path_webroot+'DataEntry/index.php?pid='+pid+'&id='+record+'&event_id='+event+'&page='+form+'&instance='+instance+'&extmod_instance_table=1';
@@ -746,7 +745,7 @@ class InstanceTable extends AbstractExternalModule
           if (results !== null) {
             return url.replace(name + '=' + results[1], name + '=' + value);
           } else {
-            return url;
+    return url;
           }
         }
 
@@ -972,3 +971,4 @@ class InstanceTable extends AbstractExternalModule
         );
     }
 }
+
