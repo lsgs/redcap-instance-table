@@ -39,6 +39,7 @@ class InstanceTable extends AbstractExternalModule
         const ACTION_TAG_REF = '@INSTANCETABLE_REF';
         const ACTION_TAG_SRC = '@INSTANCETABLE_SRC'; // deprecated
         const ACTION_TAG_DST = '@INSTANCETABLE_DST'; // deprecated
+        const ACTION_TAG_FILTER = '@INSTANCETABLE_FILTER';
         const ADD_NEW_BTN_YSHIFT = '0px';
         const MODULE_VARNAME = 'MCRI_InstanceTable';
         const ACTION_TAG_DESC = 'Use with descriptive text fields to display a table of data from instances of a repeating form, or forms in a repeating event, with (for users with edit permissions) links to add/edit instances in a popup window.<br>* @INSTANCETABLE=my_form_name<br>* @INSTANCETABLE=event_name:my_form_name<br>There are some additional tags that may be used to further tweak the table behaviour. Take a look at the documentation via the External Modulers page for more information.';
@@ -205,6 +206,18 @@ class InstanceTable extends AbstractExternalModule
                                         $repeatingFormDetails['page_size'] = 0;
                                 }
 
+                                // pick up option for additional filter expression
+                                $matches = array();
+                                $outerQuote = array('"',"'"); // work for both @INSTANCETABLE_FILTER='[v]="1"' and @INSTANCETABLE_FILTER="[v]='1'" quote patterns 
+                                foreach ($outerQuote as $quoteChar) {
+                                        if (preg_match("/".self::ACTION_TAG_FILTER."\s*=\s*$quoteChar(.+)$quoteChar/", $fieldDetails['field_annotation'], $matches)) {
+                                                $addnlFilter = trim($matches[1]);
+                                                $filter = (empty(trim($filter))) 
+                                                    ? $addnlFilter
+                                                    : "($filter) and ($addnlFilter)";
+                                        }
+                                }
+
                                 // make column list for table: all form vars or supplied list, remove any with @INSTANCETABLE_HIDE
                                 $repeatingFormFields = REDCap::getDataDictionary('array', false, null, $formName);
                                 $includeVars = $requestedVars = $matches = array();
@@ -339,7 +352,7 @@ class InstanceTable extends AbstractExternalModule
                 
                 $html.='</tr></thead>';
 
-                // if survey form get data now (as have no auth for an ajax call)
+                // if survey form get data on page load (as no add/edit and have no auth for an ajax call)
                 if ($this->isSurvey) {
                         $filter =  "[$linkField]='$linkValue'";
                         $instanceData = $this->getInstanceData($this->record, $eventId, $formName, $varList, $filter, false);
