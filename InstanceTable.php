@@ -342,11 +342,9 @@ class InstanceTable extends AbstractExternalModule
                 // if survey form get data now (as have no auth for an ajax call)
                 if ($this->isSurvey) {
                         $filter =  "[$linkField]='$linkValue'";
-                        $html.='<tbody>';
                         $instanceData = $this->getInstanceData($this->record, $eventId, $formName, $varList, $filter, false);
-                        if (count($instanceData)===0) {
-                                $html.='<tr><td colspan="'.$nColumns.'">No data available in table</td></tr>';
-                        } else {
+                        if (count($instanceData) > 0) {
+                                $html.='<tbody>';
                                 foreach ($instanceData as $rowValues) {
                                         $html.='<tr>';
                                         foreach ($rowValues as $value) {
@@ -354,8 +352,11 @@ class InstanceTable extends AbstractExternalModule
                                         }
                                         $html.='</tr>';
                                 }
+                                $html.='</tbody>';
+                        } else {
+                                // $html.='<tr><td colspan="'.$nColumns.'">No data available in table</td></tr>';
+                                // unnecessary and DT does not supprt colspan in bidy tr // https://datatables.net/forums/discussion/32575/uncaught-typeerror-cannot-set-property-dt-cellindex-of-undefined
                         }
-                        $html.='</tbody>';
                 }
 
                 $html.='</table>';
@@ -388,7 +389,7 @@ class InstanceTable extends AbstractExternalModule
                                 $thisInstanceValues[] = $this->makeInstanceNumDisplay($instance, $record, $event, $form, $instance);
 
                                 foreach ($instanceFieldData as $fieldName => $value) {
-                                        if (trim($value)==='') {
+                                        if (is_string($value) && trim($value)==='') { // PHP 8 doesn't like trimming checkbox array!
                                                 $thisInstanceValues[] = '';
                                                 continue;
                                         }
@@ -709,7 +710,7 @@ var <?php echo self::MODULE_VARNAME;?> = (function(window, document, $, app_path
         }
 
         // changes to save/cancel/delete buttons in popup window
-        $('button[name=submit-btn-saverecord]')// Save & Close
+        $('button[name=submit-btn-saverecord]')// Save & Exit Form (here means save and close the popup)
             .removeAttr('onclick')
             .click(function(event) {
                 $('#form').append('<input type="hidden" name="extmod_closerec_home" value="<?=$record?>">');
@@ -718,7 +719,7 @@ var <?php echo self::MODULE_VARNAME;?> = (function(window, document, $, app_path
                 dataEntrySubmit(this);
             });
         $('#submit-btn-savenextinstance')// Save & Next Instance (not necessarily a new instance)
-            .attr('name', 'submit-btn-savecontinue')
+            .attr('name', 'submit-btn-savenextinstance')
             .removeAttr('onclick')
             .click(function(event) {
                 var currentUrl = window.location.href;
