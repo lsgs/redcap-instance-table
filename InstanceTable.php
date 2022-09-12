@@ -47,6 +47,8 @@ class InstanceTable extends AbstractExternalModule
         const ERROR_NOT_REPEATING_CLASSIC = '<div class="red">ERROR: "%s" is not a repeating form. Contact the project designer.';
         const ERROR_NOT_REPEATING_LONG = '<div class="red">ERROR: "%s" is not a repeating form for event "%s". Contact the project designer.';
         const ERROR_NO_VIEW_ACCESS = '<div class="yellow">You do not have permission to view this form\'s data.';
+        const REPLQUOTE_SINGLE = 'REPLQUOTE_SINGLE';
+        const REPLQUOTE_DOUBLE = 'REPLQUOTE_DOUBLE';
 
         public function __construct() {
                 parent::__construct();
@@ -225,6 +227,7 @@ class InstanceTable extends AbstractExternalModule
                                         $requestedVars = explode(',',trim($matches[1]));
                                         $includeVars = array_intersect($requestedVars, array_keys($repeatingFormFields));
                                 } else {
+                                        $requestedVars = array();
                                         $includeVars = array_keys($repeatingFormFields);
                                 }
                 
@@ -232,8 +235,8 @@ class InstanceTable extends AbstractExternalModule
                                         // remove descriptive text fields
                                         if ($repeatingFormFields[$fieldName]['field_type']==='descriptive') { 
                                                 unset($includeVars[$idx]);
-                                        } else {
-                                                // ignore fields tagged @FORMINSTANCETABLE_HIDE
+                                        } else if (!in_array($fieldName, $requestedVars)){
+                                                // ignore fields tagged @FORMINSTANCETABLE_HIDE - unless requested explicitly in varlist
                                                 $matches = array();
                                                 if (preg_match("/".self::ACTION_TAG_HIDE_FIELD."/", $repeatingFormFields[$fieldName]['field_annotation'])) {
                                                        unset($includeVars[$idx]);
@@ -244,6 +247,7 @@ class InstanceTable extends AbstractExternalModule
                                 $repeatingFormDetails['var_list'] = $includeVars;
 
                                 $ajaxUrl = $this->getUrl('instance_table_ajax.php');
+                                $filter = htmlspecialchars(str_replace("'",self::REPLQUOTE_SINGLE,str_replace('"',self::REPLQUOTE_DOUBLE,$filter)), ENT_QUOTES);
                                 $repeatingFormDetails['ajax_url'] = $ajaxUrl."&record={$this->record}&event_id=$eventId&form_name=$formName&filter=$filter&fields=".implode('|',$includeVars);
                                 $repeatingFormDetails['markup'] = '';
 
@@ -382,6 +386,7 @@ class InstanceTable extends AbstractExternalModule
         
         public function getInstanceData($record, $event, $form, $fields, $filter, $includeFormStatus=true) {
                 $instanceData = array();
+                $filter = str_replace(self::REPLQUOTE_SINGLE,"'",str_replace(self::REPLQUOTE_DOUBLE,'"',$filter));
 
                 $repeatingFormFields = REDCap::getDataDictionary('array', false, null, $form);
 
@@ -401,7 +406,9 @@ class InstanceTable extends AbstractExternalModule
                                 $thisInstanceValues = array();
                                 $thisInstanceValues[] = $this->makeInstanceNumDisplay($instance, $record, $event, $form, $instance);
 
-                                foreach ($instanceFieldData as $fieldName => $value) {
+                                // foreach ($instanceFieldData as $fieldName => $value) { 
+                                foreach ($fields as $fieldName) { // loop through $fields not data array so cols can be in order specified in varlist
+                                        $value = $instanceFieldData[$fieldName];
                                         if (is_string($value) && trim($value)==='') { // PHP 8 doesn't like trimming checkbox array!
                                                 $thisInstanceValues[] = '';
                                                 continue;
@@ -527,13 +534,14 @@ class InstanceTable extends AbstractExternalModule
         }
 
         protected function makeOntologyDisplay($val, $service, $category) {
-                $sql = "select label from redcap.redcap_web_service_cache where project_id=".db_escape(PROJECT_ID)." and service='".db_escape($service)."' and category='".db_escape($category)."' and `value`='".db_escape($val)."'";
-                $q = db_query($sql);
-                $cachedLabel = db_result($q, 0);
-//                $cachedLabel = db_result(db_query("select label from redcap.redcap_web_service_cache where project_id=".db_escape($PROJECT_ID)." and service='".db_escape($service)."' and category='".db_escape($category)."' and `value`='".db_escape($val)."'"), 0);
-                return (is_null($cachedLabel) || $cachedLabel==='')
+                $sql = "select label from redcap.redcap_web_service_cache where project_id=? and service=? and category=? and `value`=?";
+                $q = $this->query($sql, [PROJECT_ID, $service, $category, $val]);
+                $r = db_fetch_assoc($q);
+                $cachedLabel = $r["label"];
+                $ontDisplay = (is_null($cachedLabel) || $cachedLabel==='')
                         ? $val
                         : $cachedLabel.' <span class="text-muted">('.$val.')</span>';
+                return htmlspecialchars($ontDisplay, ENT_QUOTES);
         }
         
         protected function insertJS() {
@@ -786,7 +794,7 @@ var <?php echo self::MODULE_VARNAME;?> = (function(window, document, $, app_path
 </script>
                 <?php
         }
-        
+
         /**
          * redcap_every_page_before_render
          * - When doing Save & Exit or Delete Instance from popup then persist a flag on the session so can close popup on record home page.
