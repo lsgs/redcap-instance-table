@@ -365,7 +365,7 @@ class InstanceTable extends AbstractExternalModule
                                 foreach ($instanceData as $rowValues) {
                                         $html.='<tr>';
                                         foreach ($rowValues as $value) {
-                                                $html.="<td>$value</td>";
+                                                $html.="<td>".htmlspecialchars($value, ENT_QUOTES)."</td>";
                                         }
                                         $html.='</tr>';
                                 }
@@ -441,7 +441,7 @@ class InstanceTable extends AbstractExternalModule
                                                 $outValue = $value;
                                         }
                                         
-                                        $thisInstanceValues[] = $outValue;
+                                        $thisInstanceValues[] = htmlspecialchars($outValue, ENT_QUOTES);
                                 }
                                 
                                 $instanceData[] = $thisInstanceValues;
@@ -541,7 +541,7 @@ class InstanceTable extends AbstractExternalModule
                 $ontDisplay = (is_null($cachedLabel) || $cachedLabel==='')
                         ? $val
                         : $cachedLabel.' <span class="text-muted">('.$val.')</span>';
-                return htmlspecialchars($ontDisplay, ENT_QUOTES);
+                return $ontDisplay;
         }
         
         protected function insertJS() {
