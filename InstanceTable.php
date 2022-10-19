@@ -42,7 +42,7 @@ class InstanceTable extends AbstractExternalModule
         const ACTION_TAG_FILTER = '@INSTANCETABLE_FILTER';
         const ADD_NEW_BTN_YSHIFT = '0px';
         const MODULE_VARNAME = 'MCRI_InstanceTable';
-        const ACTION_TAG_DESC = 'Use with descriptive text fields to display a table of data from instances of a repeating form, or forms in a repeating event, with (for users with edit permissions) links to add/edit instances in a popup window.<br>* @INSTANCETABLE=my_form_name<br>* @INSTANCETABLE=event_name:my_form_name<br>There are some additional tags that may be used to further tweak the table behaviour. Take a look at the documentation via the External Modulers page for more information.';
+        const ACTION_TAG_DESC = 'Use with descriptive text fields to display a table of data from instances of a repeating form, or forms in a repeating event, with (for users with edit permissions) links to add/edit instances in a popup window.<br>* @INSTANCETABLE=my_form_name<br>* @INSTANCETABLE=event_name:my_form_name<br>There are some additional tags that may be used to further tweak the table behaviour. Take a look at the documentation via the External Modules page for more information.';
 
         const ERROR_NOT_REPEATING_CLASSIC = '<div class="red">ERROR: "%s" is not a repeating form. Contact the project designer.';
         const ERROR_NOT_REPEATING_LONG = '<div class="red">ERROR: "%s" is not a repeating form for event "%s". Contact the project designer.';
@@ -365,14 +365,14 @@ class InstanceTable extends AbstractExternalModule
                                 foreach ($instanceData as $rowValues) {
                                         $html.='<tr>';
                                         foreach ($rowValues as $value) {
-                                                $html.="<td>".htmlspecialchars($value, ENT_QUOTES)."</td>";
+                                                $html.="<td>".REDCap::filterHtml($value)."</td>"; // $html.="<td>".htmlspecialchars($value, ENT_QUOTES)."</td>";
                                         }
                                         $html.='</tr>';
                                 }
                                 $html.='</tbody>';
                         } else {
                                 // $html.='<tr><td colspan="'.$nColumns.'">No data available in table</td></tr>';
-                                // unnecessary and DT does not supprt colspan in bidy tr // https://datatables.net/forums/discussion/32575/uncaught-typeerror-cannot-set-property-dt-cellindex-of-undefined
+                                // unnecessary and DT does not supprt colspan in body tr // https://datatables.net/forums/discussion/32575/uncaught-typeerror-cannot-set-property-dt-cellindex-of-undefined
                         }
                 }
 
@@ -403,6 +403,7 @@ class InstanceTable extends AbstractExternalModule
                         
                 if (!empty($recordData[$record]['repeat_instances'][$event][$formKey])) {
                         foreach ($recordData[$record]['repeat_instances'][$event][$formKey] as $instance => $instanceFieldData) {
+                                $instance = \intval($instance);
                                 $thisInstanceValues = array();
                                 $thisInstanceValues[] = $this->makeInstanceNumDisplay($instance, $record, $event, $form, $instance);
 
@@ -441,7 +442,7 @@ class InstanceTable extends AbstractExternalModule
                                                 $outValue = $value;
                                         }
                                         
-                                        $thisInstanceValues[] = htmlspecialchars($outValue, ENT_QUOTES);
+                                        $thisInstanceValues[] = \REDCap::filterHtml($outValue);
                                 }
                                 
                                 $instanceData[] = $thisInstanceValues;
@@ -815,7 +816,7 @@ var <?php echo self::MODULE_VARNAME;?> = (function(window, document, $, app_path
                         $recordData = REDCap::getData('array',$_GET['id'],$_GET['page'].'_complete',$_GET['event_id']);
                         
                         $currentInstances = array_keys($recordData[$_GET['id']]['repeat_instances'][$_GET['event_id']][$formKey]);
-                        $_GET['instance'] = 1 + end($currentInstances);
+                        $_GET['instance'] = (is_null($currentInstances)) ? 1 : 1 + end($currentInstances);
 
                 } else if (PAGE==='Design/action_tag_explain.php') {
                         $lastActionTagDesc = end(Form::getActionTags());
