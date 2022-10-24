@@ -442,7 +442,7 @@ class InstanceTable extends AbstractExternalModule
                                                 $outValue = $value;
                                         }
                                         
-                                        $thisInstanceValues[] = \REDCap::filterHtml($outValue);
+                                        $thisInstanceValues[] = $outValue;
                                 }
                                 
                                 $instanceData[] = $thisInstanceValues;
