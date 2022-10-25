@@ -435,11 +435,14 @@ class InstanceTable extends AbstractExternalModule
                                                         $outValue = $this->makeTextDisplay($value, $repeatingFormFields, $fieldName);
                                                 }
                                                 
+                                        } else if ($fieldType==='notes') {
+                                                $outValue = $this->makeTextDisplay($value, $repeatingFormFields, $fieldName);
+                                                
                                         } else if ($fieldType==='file') {
                                                 $outValue = $this->makeFileDisplay($value, $record, $event, $instance, $fieldName);
                                                 
                                         } else {
-                                                $outValue = $value;
+                                                $outValue = htmlentities($value, ENT_QUOTES);
                                         }
                                         
                                         $thisInstanceValues[] = $outValue;
@@ -496,7 +499,7 @@ class InstanceTable extends AbstractExternalModule
                 } else {
                         $outValue = $this->makeChoiceDisplayHtml($val, $choices);
                 }
-                return $outValue;
+                return REDCap::filterHtml($outValue);
         }
         
         protected function makeChoiceDisplayHtml($val, $choices) {
@@ -523,15 +526,16 @@ class InstanceTable extends AbstractExternalModule
                         $outVal = "<a href='mailto:$val'>$val</a>";
                         break;
                     default:
-                        $outVal = REDCap::filterHtml($val);;
+                        $outVal = $val;
                         break;
                 }
-                return $outVal;
+                return REDCap::filterHtml($outVal);
         }
 
         protected function makeFileDisplay($val, $record, $event_id, $instance, $fieldName) {
                 $downloadDocUrl = APP_PATH_WEBROOT.'DataEntry/file_download.php?pid='.PROJECT_ID."&s=&record=$record&event_id=$event_id&instance=$instance&field_name=$fieldName&id=$val&doc_id_hash=".Files::docIdHash($val);
-                return "<button class='btn btn-defaultrc btn-xs' style='font-size:8pt;' onclick=\"window.open('$downloadDocUrl','_blank');return false;\">{$this->lang['design_121']}</button>";
+                $fileDlBtn = "<button class='btn btn-defaultrc btn-xs' style='font-size:8pt;' onclick=\"window.open('$downloadDocUrl','_blank');return false;\">{$this->lang['design_121']}</button>";
+                return str_replace('removed=','onclick=',REDCap::filterHtml($fileDlBtn));
         }
 
         protected function makeOntologyDisplay($val, $service, $category) {
@@ -542,7 +546,7 @@ class InstanceTable extends AbstractExternalModule
                 $ontDisplay = (is_null($cachedLabel) || $cachedLabel==='')
                         ? $val
                         : $cachedLabel.' <span class="text-muted">('.$val.')</span>';
-                return $ontDisplay;
+                return REDCap::filterHtml($ontDisplay);
         }
         
         protected function insertJS() {
