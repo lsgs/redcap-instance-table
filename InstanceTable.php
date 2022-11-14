@@ -819,8 +819,13 @@ var <?php echo self::MODULE_VARNAME;?> = (function(window, document, $, app_path
 
                         $recordData = REDCap::getData('array',$_GET['id'],$_GET['page'].'_complete',$_GET['event_id']);
                         
-                        $currentInstances = array_keys($recordData[$_GET['id']]['repeat_instances'][$_GET['event_id']][$formKey]);
-                        $_GET['instance'] = (is_null($currentInstances)) ? 1 : 1 + end($currentInstances);
+                        if (array_key_exists('repeat_instances',$recordData[$_GET['id']]) &&
+                            array_key_exists($_GET['event_id'], $recordData[$_GET['id']]['repeat_instances'])) {
+                                $currentInstances = array_keys($recordData[$_GET['id']]['repeat_instances'][$_GET['event_id']][$formKey]);
+                                $_GET['instance'] = (is_null($currentInstances)) ? 1 : 1 + end($currentInstances);
+                        } else {
+                                $_GET['instance'] = 1;
+                        }
 
                 } else if (PAGE==='Design/action_tag_explain.php') {
                         $lastActionTagDesc = end(Form::getActionTags());
@@ -832,7 +837,7 @@ var <?php echo self::MODULE_VARNAME;?> = (function(window, document, $, app_path
                         $lastActionTagDesc .= $this->makeTagTR(static::ACTION_TAG, static::ACTION_TAG_DESC);
                         
                         $this->lang[$langElement] = rtrim(rtrim(rtrim(trim($lastActionTagDesc), '</tr>')),'</td>');
-            }
+                }
         }
   
         /**
