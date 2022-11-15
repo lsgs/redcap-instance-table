@@ -819,7 +819,8 @@ var <?php echo self::MODULE_VARNAME;?> = (function(window, document, $, app_path
 
                         $recordData = REDCap::getData('array',$_GET['id'],$_GET['page'].'_complete',$_GET['event_id']);
                         
-                        if (array_key_exists('repeat_instances',$recordData[$_GET['id']]) &&
+                        if (array_key_exists($_GET['id'],$recordData) &&
+                            array_key_exists('repeat_instances',$recordData[$_GET['id']]) &&
                             array_key_exists($_GET['event_id'], $recordData[$_GET['id']]['repeat_instances'])) {
                                 $currentInstances = array_keys($recordData[$_GET['id']]['repeat_instances'][$_GET['event_id']][$formKey]);
                                 $_GET['instance'] = (is_null($currentInstances)) ? 1 : 1 + end($currentInstances);
