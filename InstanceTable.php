@@ -65,7 +65,7 @@ class InstanceTable extends AbstractExternalModule
          */
         public function redcap_save_record($project_id, $record=null, $instrument, $event_id, $group_id=null, $survey_hash=null, $response_id=null, $repeat_instance=1) {
                 if (isset($_GET['extmod_instance_table']) && $_GET['extmod_instance_table']=='1') {
-                        $_GET['instance'] .= '&extmod_instance_table=1';
+                    $_GET['pid'] .= '&extmod_instance_table=1'; // $_GET['instance'] .= '&extmod_instance_table=1';
                 }
         }
 
