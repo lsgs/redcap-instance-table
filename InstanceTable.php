@@ -220,6 +220,7 @@ class InstanceTable extends AbstractExternalModule
                                                     : "($filter) and ($addnlFilter)";
                                         }
                                 }
+                                $repeatingFormDetails['filter']=$filter;
 
                                 // make column list for table: all form vars or supplied list, remove any with @INSTANCETABLE_HIDE
                                 $repeatingFormFields = REDCap::getDataDictionary('array', false, null, $formName);
@@ -334,6 +335,7 @@ class InstanceTable extends AbstractExternalModule
                 $scrollX = $repeatingFormDetails['scroll_x'];
                 $linkField = $repeatingFormDetails['link_field'];
                 $linkValue = $repeatingFormDetails['link_instance'];
+                $filter = $repeatingFormDetails['filter']; // The filter actually contains linkfield=linkvalue
                 $varList = $repeatingFormDetails['var_list'];
 
                 $scrollStyle = ($scrollX) ? "max-width:790px;" : "";
@@ -359,7 +361,6 @@ class InstanceTable extends AbstractExternalModule
 
                 // if survey form get data on page load (as no add/edit and have no auth for an ajax call)
                 if ($this->isSurvey) {
-                        $filter =  "[$linkField]='$linkValue'";
                         $instanceData = $this->getInstanceData($this->record, $eventId, $formName, $varList, $filter, false);
                         if (count($instanceData) > 0) {
                                 $html.='<tbody>';
