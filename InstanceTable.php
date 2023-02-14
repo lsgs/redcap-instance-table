@@ -220,8 +220,8 @@ class InstanceTable extends AbstractExternalModule
                                                     : "($filter) and ($addnlFilter)";
                                         }
                                 }
-                                $repeatingFormDetails['filter']=$filter;
-
+                                $repeatingFormDetails['filter']=REDCap::filterHtml($filter);
+                                
                                 // make column list for table: all form vars or supplied list, remove any with @INSTANCETABLE_HIDE
                                 $repeatingFormFields = REDCap::getDataDictionary('array', false, null, $formName);
                                 $includeVars = $requestedVars = $matches = array();
