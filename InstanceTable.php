@@ -395,15 +395,20 @@ class InstanceTable extends AbstractExternalModule
                 // find any descriptive text fields tagged with @FORMINSTANCETABLE=form_name
                 $this->setTaggedFields();
                 $this->checkUserPermissions();
-        
+                
                 $hasPermissions = false;
                 foreach($this->taggedFields as $fieldDetails) {
                     if($fieldDetails["form_name"] == $form && $fieldDetails["permission_level"] > 0) {
                         $hasPermissions = true;
                     }
                 }
-        
-                if(!$hasPermissions) {
+	
+                $recordDag = $this->getDAG($record);
+                if(!empty($this->user_rights["group_id"]) && $this->user_rights["group_id"] != $recordDag) {
+                    $hasPermissions = false;
+                }
+
+				if(!$hasPermissions) {
                     return false;
                 }
                 
