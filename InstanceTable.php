@@ -389,7 +389,29 @@ class InstanceTable extends AbstractExternalModule
         public function getInstanceData($record, $event, $form, $fields, $filter, $includeFormStatus=true) {
                 $instanceData = array();
                 $filter = str_replace(self::REPLQUOTE_SINGLE,"'",str_replace(self::REPLQUOTE_DOUBLE,'"',$filter));
+	
+                ## Check user permissions for access to form with instance table or form with data
+        
+                // find any descriptive text fields tagged with @FORMINSTANCETABLE=form_name
+                $this->setTaggedFields();
+                $this->checkUserPermissions();
+                
+                $hasPermissions = false;
+                foreach($this->taggedFields as $fieldDetails) {
+                    if($fieldDetails["form_name"] == $form && $fieldDetails["permission_level"] > 0) {
+                        $hasPermissions = true;
+                    }
+                }
+	
+                $recordDag = $this->getDAG($record);
+                if(!empty($this->user_rights["group_id"]) && $this->user_rights["group_id"] != $recordDag) {
+                    $hasPermissions = false;
+                }
 
+				if(!$hasPermissions) {
+                    return false;
+                }
+                
                 $repeatingFormFields = REDCap::getDataDictionary('array', false, null, $form);
 
                 // ignore any supplied fields not on the repeating form 
