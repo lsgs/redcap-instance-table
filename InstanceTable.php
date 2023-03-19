@@ -391,7 +391,8 @@ class InstanceTable extends AbstractExternalModule
                 $filter = str_replace(self::REPLQUOTE_SINGLE,"'",str_replace(self::REPLQUOTE_DOUBLE,'"',$filter));
 	
                 ## Check user permissions for access to form with instance table or form with data
-        
+                if ($this->isSurvey) return array(); // ajax calls from surveys not allowed
+
                 // find any descriptive text fields tagged with @FORMINSTANCETABLE=form_name
                 $this->setTaggedFields();
                 $this->checkUserPermissions();
@@ -402,14 +403,14 @@ class InstanceTable extends AbstractExternalModule
                         $hasPermissions = true;
                     }
                 }
-	
+    
                 $recordDag = $this->getDAG($record);
                 if(!empty($this->user_rights["group_id"]) && $this->user_rights["group_id"] != $recordDag) {
                     $hasPermissions = false;
                 }
 
-				if(!$hasPermissions) {
-                    return false;
+                if(!$hasPermissions) {
+                    return array();
                 }
                 
                 $repeatingFormFields = REDCap::getDataDictionary('array', false, null, $form);
