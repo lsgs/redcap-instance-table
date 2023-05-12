@@ -9,17 +9,10 @@
 		}
 	],
 	"description": "Use the action tag @INSTANCETABLE=form_name in a descriptive text field to include a table showing data from repeat instances of that form.<br>If project is longitudinal, use @INSTANCETABLE=event_name:form_name to specify the event and form (can be a repeating form or a form in a repeating event).",
-    "framework-version": 8,
+    "framework-version": 12,
     "compatibility": {
-        "redcap-version-min": "11.1.1"
+        "redcap-version-min": "13.4.12"
     },
-	"permissions": [
-        "redcap_every_page_before_render",
-        "redcap_every_page_top",
-        "redcap_data_entry_form_top",
-        "redcap_survey_page_top",
-        "redcap_save_record"
-	],
     "enable-every-page-hooks-on-system-pages": false,
 	"system-settings": [ ],
 	"project-settings": [ ]

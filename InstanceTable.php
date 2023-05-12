@@ -390,9 +390,6 @@ class InstanceTable extends AbstractExternalModule
                 $instanceData = array();
                 $filter = str_replace(self::REPLQUOTE_SINGLE,"'",str_replace(self::REPLQUOTE_DOUBLE,'"',$filter));
 	
-                ## Check user permissions for access to form with instance table or form with data
-                if ($this->isSurvey) return array(); // ajax calls from surveys not allowed
-
                 // find any descriptive text fields tagged with @FORMINSTANCETABLE=form_name
                 $this->setTaggedFields();
                 $this->checkUserPermissions();
