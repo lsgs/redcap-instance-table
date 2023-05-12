@@ -338,7 +338,7 @@ class InstanceTable extends AbstractExternalModule
                 $filter = $repeatingFormDetails['filter']; // The filter actually contains linkfield=linkvalue
                 $varList = $repeatingFormDetails['var_list'];
 
-                $scrollStyle = ($scrollX) ? "max-width:790px;" : "";
+                $scrollStyle = ($scrollX) ? "display:block; max-width:790px;" : "";
                 $nColumns = 1; // start at 1 for # (Instance) column
                 $html = '<div class="" style="margin-top:10px; margin-bottom:'.self::ADD_NEW_BTN_YSHIFT.';">';
                 $html .= '<table id="'.$tableElementId.'" class="table table-striped table-bordered table-condensed table-responsive '.self::MODULE_VARNAME.' '.$tableFormClass.'" width="100%" cellspacing="0" style="'.$scrollStyle.'">';
