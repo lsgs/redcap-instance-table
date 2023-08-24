@@ -100,7 +100,7 @@ class InstanceTable extends AbstractExternalModule
                 $this->pageTop();
         }
         
-        protected function initHook($record, $instrument, $event_id, $isSurvey=false, $group_id, $repeat_instance) {
+        protected function initHook($record, $instrument, $event_id, $isSurvey, $group_id, $repeat_instance) {
             $this->record = $record;
             $this->instrument = $instrument;
             $this->event_id = $event_id;
