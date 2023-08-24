@@ -220,6 +220,7 @@ class InstanceTable extends AbstractExternalModule
                                                     : "($filter) and ($addnlFilter)";
                                         }
                                 }
+				$filter = str_replace('<>','!=',$filter); // '<>' gets removed by REDCap::filterHtml()
                                 $repeatingFormDetails['filter']=REDCap::filterHtml($filter);
                                 
                                 // make column list for table: all form vars or supplied list, remove any with @INSTANCETABLE_HIDE
@@ -391,8 +392,11 @@ class InstanceTable extends AbstractExternalModule
                 $filter = str_replace(self::REPLQUOTE_SINGLE,"'",str_replace(self::REPLQUOTE_DOUBLE,'"',$filter));
 	
                 // find any descriptive text fields tagged with @FORMINSTANCETABLE=form_name
-                $this->setTaggedFields();
-                $this->checkUserPermissions();
+                
+                if (!$this->isSurvey) {
+                    $this->setTaggedFields();
+                }                
+		$this->checkUserPermissions();
                 
                 $hasPermissions = false;
                 foreach($this->taggedFields as $fieldDetails) {
@@ -561,7 +565,7 @@ class InstanceTable extends AbstractExternalModule
         }
 
         protected function makeOntologyDisplay($val, $service, $category) {
-                $sql = "select label from redcap.redcap_web_service_cache where project_id=? and service=? and category=? and `value`=?";
+                $sql = "select label from redcap_web_service_cache where project_id=? and service=? and category=? and `value`=?";
                 $q = $this->query($sql, [PROJECT_ID, $service, $category, $val]);
                 $r = db_fetch_assoc($q);
                 $cachedLabel = $r["label"];
