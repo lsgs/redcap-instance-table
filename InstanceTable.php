@@ -100,7 +100,7 @@ class InstanceTable extends AbstractExternalModule
                 $this->pageTop();
         }
         
-        protected function initHook($record, $instrument, $event_id, $isSurvey=false, $group_id, $repeat_instance) {
+        protected function initHook($record, $instrument, $event_id, $isSurvey, $group_id, $repeat_instance) {
             $this->record = $record;
             $this->instrument = $instrument;
             $this->event_id = $event_id;
@@ -220,6 +220,7 @@ class InstanceTable extends AbstractExternalModule
                                                     : "($filter) and ($addnlFilter)";
                                         }
                                 }
+				$filter = str_replace('<>','!=',$filter); // '<>' gets removed by REDCap::filterHtml()
                                 $repeatingFormDetails['filter']=REDCap::filterHtml($filter);
                                 
                                 // make column list for table: all form vars or supplied list, remove any with @INSTANCETABLE_HIDE
@@ -391,8 +392,11 @@ class InstanceTable extends AbstractExternalModule
                 $filter = str_replace(self::REPLQUOTE_SINGLE,"'",str_replace(self::REPLQUOTE_DOUBLE,'"',$filter));
 	
                 // find any descriptive text fields tagged with @FORMINSTANCETABLE=form_name
-                $this->setTaggedFields();
-                $this->checkUserPermissions();
+                
+                if (!$this->isSurvey) {
+                    $this->setTaggedFields();
+                }                
+		$this->checkUserPermissions();
                 
                 $hasPermissions = false;
                 foreach($this->taggedFields as $fieldDetails) {
