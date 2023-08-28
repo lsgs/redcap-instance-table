@@ -51,15 +51,6 @@ class InstanceTable extends AbstractExternalModule
         const REPLQUOTE_SINGLE = 'REPLQUOTE_SINGLE';
         const REPLQUOTE_DOUBLE = 'REPLQUOTE_DOUBLE';
 
-        public function __construct() {
-                parent::__construct();
-                global $Proj, $lang, $user_rights;
-                $this->Proj = $Proj;
-                $this->lang = &$lang;
-                $this->user_rights = &$user_rights;
-                $this->isSurvey = (PAGE==='surveys/index.php');
-        }
-
         /**
          * redcap_save_record
          * When saving an instance in the popup, get &extmod_instance_table=1 into the redirect link e.g. when missing required fields found
@@ -101,6 +92,11 @@ class InstanceTable extends AbstractExternalModule
         }
         
         protected function initHook($record, $instrument, $event_id, $isSurvey, $group_id, $repeat_instance) {
+            global $Proj, $lang, $user_rights;
+            $this->Proj = $Proj;
+            $this->lang = &$lang;
+            $this->user_rights = &$user_rights;
+            $this->isSurvey = (PAGE==='surveys/index.php');
             $this->record = $record;
             $this->instrument = $instrument;
             $this->event_id = $event_id;
@@ -220,7 +216,7 @@ class InstanceTable extends AbstractExternalModule
                                                     : "($filter) and ($addnlFilter)";
                                         }
                                 }
-				$filter = str_replace('<>','!=',$filter); // '<>' gets removed by REDCap::filterHtml()
+                                $filter = str_replace('<>','!=',$filter); // '<>' gets removed by REDCap::filterHtml()
                                 $repeatingFormDetails['filter']=REDCap::filterHtml($filter);
                                 
                                 // make column list for table: all form vars or supplied list, remove any with @INSTANCETABLE_HIDE
@@ -388,6 +384,11 @@ class InstanceTable extends AbstractExternalModule
         }
         
         public function getInstanceData($record, $event, $form, $fields, $filter, $includeFormStatus=true) {
+                global $Proj, $lang, $user_rights;
+                $this->Proj = $Proj;
+                $this->lang = &$lang;
+                $this->user_rights = &$user_rights;
+                $this->isSurvey = (PAGE==='surveys/index.php');
                 $instanceData = array();
                 $filter = str_replace(self::REPLQUOTE_SINGLE,"'",str_replace(self::REPLQUOTE_DOUBLE,'"',$filter));
 	
@@ -396,7 +397,7 @@ class InstanceTable extends AbstractExternalModule
                 if (!$this->isSurvey) {
                     $this->setTaggedFields();
                 }                
-		$this->checkUserPermissions();
+                $this->checkUserPermissions();
                 
                 $hasPermissions = false;
                 foreach($this->taggedFields as $fieldDetails) {
