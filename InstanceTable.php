@@ -839,6 +839,11 @@ var <?php echo self::MODULE_VARNAME;?> = (function(window, document, $, app_path
                         $_SESSION['extmod_closerec_home'] = $_POST['extmod_closerec_home'];
 
                 } else if (PAGE==='DataEntry/index.php' && isset($_GET['extmod_instance_table']) && isset($_GET['extmod_instance_table_add_new'])) {
+                        global $Proj, $lang, $user_rights;
+                        $this->Proj = $Proj;
+                        $this->lang = &$lang;
+                        $this->user_rights = &$user_rights;
+                        $this->isSurvey = false;
                         // adding new instance - read current max and redirect to + 1
                         $formKey = ($this->Proj->isRepeatingEvent($_GET['event_id']))
                                 ? ''             // repeating event - empty string key
