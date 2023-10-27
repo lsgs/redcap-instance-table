@@ -864,7 +864,7 @@ var <?php echo self::MODULE_VARNAME;?> = (function(window, document, $, app_path
                         $lastActionTagDesc = end(Form::getActionTags());
 
                         // which $lang element is this?
-                        $langElement = array_search($lastActionTagDesc, $this->lang);
+                        $langElement = array_search($lastActionTagDesc, is_array($this->lang)? $this->lang: []);
                         
                         $lastActionTagDesc .= "</td></tr>";
                         $lastActionTagDesc .= $this->makeTagTR(static::ACTION_TAG, static::ACTION_TAG_DESC);
