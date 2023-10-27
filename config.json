@@ -15,7 +15,7 @@
     },
 	"action-tags": [
         {
-            "tag": "'@INSTANCETABLE",
+            "tag": "@INSTANCETABLE",
             "description": "Tag @INSTANCETABLE=form_name in a descriptive text field to include a table showing data from repeat instances of that form."
         },
 		{
