@@ -38,6 +38,8 @@ class InstanceTable extends AbstractExternalModule
         const ACTION_TAG_VARLIST = '@INSTANCETABLE_VARLIST'; // provide a comma-separated list of variables to include (not including any tagged HIDE)
         const ACTION_TAG_PAGESIZE = '@INSTANCETABLE_PAGESIZE'; // Override default choices for page sizing: specify integer default page size, use -1 for All
         const ACTION_TAG_REF = '@INSTANCETABLE_REF';
+        const ACTION_TAG_SRC = '@INSTANCETABLE_SRC'; // deprecated
+        const ACTION_TAG_DST = '@INSTANCETABLE_DST'; // deprecated
         const ACTION_TAG_FILTER = '@INSTANCETABLE_FILTER';
         const ADD_NEW_BTN_YSHIFT = '0px';
         const MODULE_VARNAME = 'MCRI_InstanceTable';
@@ -835,11 +837,9 @@ var <?php echo self::MODULE_VARNAME;?> = (function(window, document, $, app_path
                 if (isset($_POST['extmod_closerec_home'])) {
                         $_SESSION['extmod_closerec_home'] = $_POST['extmod_closerec_home'];
 
-                } else if (PAGE==='DataEntry/index.php' && isset($_GET['extmod_instance_table']) && isset($_GET['extmod_instance_table_add_new'])) {
-                        global $Proj, $lang, $user_rights;
+                } else if (PAGE==='DataEntry/index.php' && isset($_GET['extmod_instance_table']) && isset($_GET['extmod_instance_table_add_new']) && !is_null($project_id) && isset(($_GET['event_id']))) {
+                        global $Proj;
                         $this->Proj = $Proj;
-                        $this->lang = &$lang;
-                        $this->user_rights = &$user_rights;
                         $this->isSurvey = false;
                         // adding new instance - read current max and redirect to + 1
                         $formKey = ($this->Proj->isRepeatingEvent($_GET['event_id']))
@@ -856,7 +856,6 @@ var <?php echo self::MODULE_VARNAME;?> = (function(window, document, $, app_path
                         } else {
                                 $_GET['instance'] = 1;
                         }
-
                 } 
         }
 }
