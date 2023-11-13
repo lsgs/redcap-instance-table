@@ -38,12 +38,9 @@ class InstanceTable extends AbstractExternalModule
         const ACTION_TAG_VARLIST = '@INSTANCETABLE_VARLIST'; // provide a comma-separated list of variables to include (not including any tagged HIDE)
         const ACTION_TAG_PAGESIZE = '@INSTANCETABLE_PAGESIZE'; // Override default choices for page sizing: specify integer default page size, use -1 for All
         const ACTION_TAG_REF = '@INSTANCETABLE_REF';
-        const ACTION_TAG_SRC = '@INSTANCETABLE_SRC'; // deprecated
-        const ACTION_TAG_DST = '@INSTANCETABLE_DST'; // deprecated
         const ACTION_TAG_FILTER = '@INSTANCETABLE_FILTER';
         const ADD_NEW_BTN_YSHIFT = '0px';
         const MODULE_VARNAME = 'MCRI_InstanceTable';
-        const ACTION_TAG_DESC = 'Use with descriptive text fields to display a table of data from instances of a repeating form, or forms in a repeating event, with (for users with edit permissions) links to add/edit instances in a popup window.<br>* @INSTANCETABLE=my_form_name<br>* @INSTANCETABLE=event_name:my_form_name<br>There are some additional tags that may be used to further tweak the table behaviour. Take a look at the documentation via the External Modules page for more information.';
 
         const ERROR_NOT_REPEATING_CLASSIC = '<div class="red">ERROR: "%s" is not a repeating form. Contact the project designer.';
         const ERROR_NOT_REPEATING_LONG = '<div class="red">ERROR: "%s" is not a repeating form for event "%s". Contact the project designer.';
@@ -834,7 +831,7 @@ var <?php echo self::MODULE_VARNAME;?> = (function(window, document, $, app_path
          * - Augment the action_tag_explain content on project Design pages by adding some additional tr following the last built-in action tag.
          * @param type $project_id
          */
-        public function redcap_every_page_before_render($project_id) {
+      public function redcap_every_page_before_render($project_id) {
                 if (isset($_POST['extmod_closerec_home'])) {
                         $_SESSION['extmod_closerec_home'] = $_POST['extmod_closerec_home'];
 
@@ -860,41 +857,6 @@ var <?php echo self::MODULE_VARNAME;?> = (function(window, document, $, app_path
                                 $_GET['instance'] = 1;
                         }
 
-                } else if (PAGE==='Design/action_tag_explain.php') {
-                        $lastActionTagDesc = end(Form::getActionTags());
-
-                        // which $lang element is this?
-                        $langElement = array_search($lastActionTagDesc, $this->lang);
-                        
-                        $lastActionTagDesc .= "</td></tr>";
-                        $lastActionTagDesc .= $this->makeTagTR(static::ACTION_TAG, static::ACTION_TAG_DESC);
-                        
-                        $this->lang[$langElement] = rtrim(rtrim(rtrim(trim($lastActionTagDesc), '</tr>')),'</td>');
-                }
-        }
-  
-        /**
-         * Make a table row for an action tag copied from
-         * v8.5.0/Design/action_tag_explain.php
-         * @global type $isAjax
-         * @param type $tag
-         * @param type $description
-         * @return type
-         */
-        protected function makeTagTR($tag, $description) {
-                global $isAjax;
-                return RCView::tr(array(),
-                    RCView::td(array('class'=>'nowrap', 'style'=>'text-align:center;background-color:#f5f5f5;color:#912B2B;padding:7px 15px 7px 12px;font-weight:bold;border:1px solid #ccc;border-bottom:0;border-right:0;'),
-                        ((!$isAjax || (isset($_POST['hideBtns']) && $_POST['hideBtns'] == '1')) ? '' :
-                            RCView::button(array('class'=>'btn btn-xs btn-rcred', 'style'=>'', 'onclick'=>"$('#field_annotation').val(trim('".js_escape($tag)." '+$('#field_annotation').val())); highlightTableRowOb($(this).parentsUntil('tr').parent(),2500);"), $this->lang['design_171'])
-                        )
-                    ) .
-                    RCView::td(array('class'=>'nowrap', 'style'=>'background-color:#f5f5f5;color:#912B2B;padding:7px;font-weight:bold;border:1px solid #ccc;border-bottom:0;border-left:0;border-right:0;'),
-                        $tag
-                    ) .
-                    RCView::td(array('style'=>'font-size:12px;background-color:#f5f5f5;padding:7px;border:1px solid #ccc;border-bottom:0;border-left:0;'),
-                                        '<i class="fas fa-cube mr-1"></i>'.$description
-                    )
-                );
+                } 
         }
 }
