@@ -363,7 +363,8 @@ class InstanceTable extends AbstractExternalModule
                                 foreach ($instanceData as $rowValues) {
                                         $html.='<tr>';
                                         foreach ($rowValues as $value) {
-                                                $html.="<td>".REDCap::filterHtml($value)."</td>"; // $html.="<td>".htmlspecialchars($value, ENT_QUOTES)."</td>";
+                                                $value = str_replace('removed="window.open(','onclick="window.open(',REDCap::filterHtml($value)); // <button removed="window.open( ... >Download</button> file downloads
+                                                $html.="<td>$value</td>";
                                         }
                                         $html.='</tr>';
                                 }
