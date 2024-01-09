@@ -8,12 +8,46 @@
 			"institution": "Murdoch Children's Research Institute"
 		}
 	],
-	"description": "Use the action tag @INSTANCETABLE=form_name in a descriptive text field to include a table showing data from repeat instances of that form.<br>If project is longitudinal, use @INSTANCETABLE=event_name:form_name to specify the event and form (can be a repeating form or a form in a repeating event).",
-    "framework-version": 12,
-    "compatibility": {
-        "redcap-version-min": "13.4.12"
-    },
-    "enable-every-page-hooks-on-system-pages": false,
-	"system-settings": [ ],
+	"description": "Use the action tag <code>@INSTANCETABLE=form_name</code> in a descriptive text field to include a table showing data from repeat instances of that form.<br>If project is longitudinal, use <code>@INSTANCETABLE=event_name:form_name</code> to specify the event and form (can be a repeating form or a form in a repeating event).<br>Other action tags are available for controlling cetain properties of te tables and their contents.",
+    "framework-version": 14,
+    "action-tags": [
+        {
+            "tag": "@INSTANCETABLE",
+            "description": "Tag <code>@INSTANCETABLE=form_name</code> in a descriptive text field to include a table showing data from repeat instances of that form."
+        },
+        {
+            "tag": "@INSTANCETABLE_HIDE",
+            "description": "Ignore this field in instance all tables."
+        },
+        {
+            "tag": "@INSTANCETABLE_LABEL",
+            "description": "Tag @INSTANCETABLE_LABEL='column header': Provide an alternative column title for the field in all instance tables."
+        },
+        {
+            "tag": "@INSTANCETABLE_HIDEADD",
+            "description": "Suppress the \"+ Add New\" button on data entry forms."
+        },
+        {
+            "tag": "@INSTANCETABLE_HIDEINSTANCECOL",
+            "description": "Hide the '#' column containing instance numbers."
+        },
+        {
+            "tag": "@INSTANCETABLE_VARLIST",
+            "description": "Use, for example, <code>@INSTANCETABLE_VARLIST=rptfrmvar3,rptfrmvar1,rptfrmvar6,rptfrm_complete</code> to include only the variables from the repeating form that appear in the comma-separated list. Also sets the order of columns in the table rather (default is the order of fields from the form)."
+        },
+        {
+            "tag": "@INSTANCETABLE_PAGESIZE",
+            "description": "Override default choices for page sizing: specify integer default page size, or -1 for 'All'"
+        },
+        {
+            "tag": "@INSTANCETABLE_REF",
+            "description": "Where you have an instance table on a repeating form that is referencing another repeating form, use <code>@INSTANCETABLE_REF=fieldname</code> to have the instances filtered to show only those where the current instance number is saved in a field on the referenced repeating form. For example, an instance table in a repeating 'Visit' form may be configured to show only instances of the repeating 'Medication' form where the current Visit instance is selected in the visitref field on the Medication form: <code>@INSTANCETABLE @INSTANCETABLE_REF=visitref</code>."
+        },
+        {
+            "tag": "@INSTANCETABLE_FILTER",
+            "description": "Use <code>@INSTANCETABLE_FILTER='[v]=1'</code> to specify a logic expression to show only instances that match the filter expression."
+        }
+    ],
+    "system-settings": [ ],
 	"project-settings": [ ]
 }
