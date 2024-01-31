@@ -41,6 +41,7 @@ class InstanceTable extends AbstractExternalModule
 	const ACTION_TAG_SRC = '@INSTANCETABLE_SRC'; // deprecated
         const ACTION_TAG_DST = '@INSTANCETABLE_DST'; // deprecated
         const ACTION_TAG_FILTER = '@INSTANCETABLE_FILTER';
+	const ACTION_TAG_ADDBTNLABEL = '@INSTANCETABLE_ADDBTNLABEL';
         const ADD_NEW_BTN_YSHIFT = '0px';
         const MODULE_VARNAME = 'MCRI_InstanceTable';
 
@@ -260,7 +261,15 @@ class InstanceTable extends AbstractExternalModule
                                 } else {
                                         $repeatingFormDetails['hide_add_btn'] = false;
                                 }
+
                                 
+                                if (preg_match("/".self::ACTION_TAG_ADDBTNLABEL."\s*=\'([^\']+)\'/", $fieldDetails['field_annotation'], $matches)) {
+                                $value = $matches[1];
+                                $repeatingFormDetails['button_label'] = $value;
+                                } else{
+                                        $repeatingFormDetails['button_label'] = '';
+                                }
+				
                                 $this->taggedFields[] = $repeatingFormDetails;
                         }
                 }
@@ -329,6 +338,7 @@ class InstanceTable extends AbstractExternalModule
                 $eventId = $repeatingFormDetails['event_id'];
                 $formName = $repeatingFormDetails['form_name'];
                 $scrollX = $repeatingFormDetails['scroll_x'];
+		$btnlabel = $repeatingFormDetails['button_label'];
                 $linkField = $repeatingFormDetails['link_field'];
                 $linkValue = $repeatingFormDetails['link_instance'];
                 $filter = $repeatingFormDetails['filter']; // The filter actually contains linkfield=linkvalue
@@ -375,9 +385,10 @@ class InstanceTable extends AbstractExternalModule
                 }
 
                 $html.='</table>';
-
+		
+               $btnlabelval = $btnlabel == '' ? $this->lang['data_entry_247'] : $btnlabel;
                 if ($canEdit) {
-                        $html.='<div style="position:relative;top:'.self::ADD_NEW_BTN_YSHIFT.';margin-bottom:5px;"><button type="button" class="btn btn-sm btn-success " onclick="'.self::MODULE_VARNAME.'.addNewInstance(\''.$this->record.'\','.$eventId.',\''.$formName.'\',\''.$linkField.'\',\''.$linkValue.'\');"><span class="fas fa-plus-circle" aria-hidden="true"></span>&nbsp;'.$this->lang['data_entry_247'].'</button></div>'; // Add new
+                        $html.='<div style="position:relative;top:'.self::ADD_NEW_BTN_YSHIFT.';margin-bottom:5px;"><button type="button" class="btn btn-sm btn-success " onclick="'.self::MODULE_VARNAME.'.addNewInstance(\''.$this->record.'\','.$eventId.',\''.$formName.'\',\''.$linkField.'\',\''.$linkValue.'\');"><span class="fas fa-plus-circle" aria-hidden="true"></span>&nbsp;'.$btnlabelval.'</button></div>'; // Add new
                 }
                 return $html;
         }
