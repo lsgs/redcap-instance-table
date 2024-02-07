@@ -16,7 +16,7 @@ class InstanceTable extends AbstractExternalModule
 {
         protected $isSurvey=false;
         protected $taggedFields=array();
-        
+
         // global vars dependencies
         protected $Proj;
         protected $lang;
@@ -63,7 +63,7 @@ class InstanceTable extends AbstractExternalModule
         /**
          * redcap_every_page_before_render
          * When doing Save & Exit or Delete Instance from popup then persist a flag on the session.
-         * If Record Home page is loading when this flag is present then window.close() 
+         * If Record Home page is loading when this flag is present then window.close()
          * @param type $project_id
          */
         public function redcap_every_page_top($project_id) {
@@ -74,22 +74,22 @@ class InstanceTable extends AbstractExternalModule
                         unset($_SESSION['extmod_closerec_home']);
                 }
         }
-    
+
         public function redcap_data_entry_form_top($project_id, $record, $instrument, $event_id, $group_id, $repeat_instance) {
                 $this->initHook($record, $instrument, $event_id, false, $group_id, $repeat_instance);
                 $this->pageTop();
-                
+
                 if (isset($_GET['extmod_instance_table']) && $_GET['extmod_instance_table']=='1') {
                         // this is in the popup
                         $this->popupViewTweaks();
                 }
         }
-        
+
         public function redcap_survey_page_top($project_id, $record, $instrument, $event_id, $group_id, $survey_hash, $response_id, $repeat_instance) {
                 $this->initHook($record, $instrument, $event_id, true, $group_id, $repeat_instance);
                 $this->pageTop();
         }
-        
+
         protected function initHook($record, $instrument, $event_id, $isSurvey, $group_id, $repeat_instance) {
             global $Proj, $lang, $user_rights;
             $this->Proj = $Proj;
@@ -103,11 +103,11 @@ class InstanceTable extends AbstractExternalModule
             $this->group_id = $group_id;
             $this->repeat_instance = $repeat_instance;
         }
-        
+
         protected function pageTop() {
                 // find any descriptive text fields tagged with @FORMINSTANCETABLE=form_name
                 $this->setTaggedFields();
-                
+
                 if (count($this->taggedFields)>0) {
                         // check each specified form is a repeating form or a form in a repeating event
                         $this->checkIsRepeating();
@@ -117,17 +117,17 @@ class InstanceTable extends AbstractExternalModule
 
                         // set the markup for the DataTable (or error/no permission message)
                         $this->setMarkup();
-                        
+
                         // write the JavaScript to the page
                         $this->insertJS();
                 }
         }
-        
+
         protected function setTaggedFields() {
                 $this->taggedFields = array();
-                
+
                 $instrumentFields = REDCap::getDataDictionary('array', false, true, $this->instrument);
-                
+
                 foreach ($instrumentFields as $fieldName => $fieldDetails) {
                         $matches = array();
                         // /@INSTANCETABLE='?((\w+_arm_\d+[a-z]?:)?\w+)'?\s?/
@@ -148,7 +148,7 @@ class InstanceTable extends AbstractExternalModule
                                         $eventName = '';
                                         $formName = $matches[1];
                                 }
-                                
+
                                 $repeatingFormDetails = array();
                                 $repeatingFormDetails['field_name'] = $fieldName;
                                 $repeatingFormDetails['event_id'] = $eventId;
@@ -206,18 +206,18 @@ class InstanceTable extends AbstractExternalModule
 
                                 // pick up option for additional filter expression
                                 $matches = array();
-                                $outerQuote = array('"',"'"); // work for both @INSTANCETABLE_FILTER='[v]="1"' and @INSTANCETABLE_FILTER="[v]='1'" quote patterns 
+                                $outerQuote = array('"',"'"); // work for both @INSTANCETABLE_FILTER='[v]="1"' and @INSTANCETABLE_FILTER="[v]='1'" quote patterns
                                 foreach ($outerQuote as $quoteChar) {
                                         if (preg_match("/".self::ACTION_TAG_FILTER."\s*=\s*$quoteChar(.+)$quoteChar/", $fieldDetails['field_annotation'], $matches)) {
                                                 $addnlFilter = trim($matches[1]);
-                                                $filter = (empty(trim($filter))) 
+                                                $filter = (empty(trim($filter)))
                                                     ? $addnlFilter
                                                     : "($filter) and ($addnlFilter)";
                                         }
                                 }
                                 $filter = str_replace('<>','!=',$filter); // '<>' gets removed by REDCap::filterHtml()
                                 $repeatingFormDetails['filter']=REDCap::filterHtml($filter);
-                                
+
                                 // make column list for table: all form vars or supplied list, remove any with @INSTANCETABLE_HIDE
                                 $repeatingFormFields = REDCap::getDataDictionary('array', false, null, $formName);
                                 $includeVars = $requestedVars = $matches = array();
@@ -228,10 +228,10 @@ class InstanceTable extends AbstractExternalModule
                                         $requestedVars = array();
                                         $includeVars = array_keys($repeatingFormFields);
                                 }
-                
+
                                 foreach ($includeVars as $idx => $fieldName) {
                                         // remove descriptive text fields
-                                        if ($repeatingFormFields[$fieldName]['field_type']==='descriptive') { 
+                                        if ($repeatingFormFields[$fieldName]['field_type']==='descriptive') {
                                                 unset($includeVars[$idx]);
                                         } else if (!in_array($fieldName, $requestedVars)){
                                                 // ignore fields tagged @FORMINSTANCETABLE_HIDE - unless requested explicitly in varlist
@@ -260,7 +260,7 @@ class InstanceTable extends AbstractExternalModule
                                 } else {
                                         $repeatingFormDetails['hide_add_btn'] = false;
                                 }
-                                
+
                                 $this->taggedFields[] = $repeatingFormDetails;
                         }
                 }
@@ -274,11 +274,11 @@ class InstanceTable extends AbstractExternalModule
                         if ($this->Proj->isRepeatingEvent($this->event_id) && $this->event_id == $repeatingFormDetails['event_id']) {
                             $repeatingFormDetails['permission_level'] = -1; // error (current event is repeating, form in repeating event cannot be a repeating form)
                         }
-                    
+
                         $this->taggedFields[$key] = $repeatingFormDetails;
                 }
         }
-        
+
         protected function checkUserPermissions() {
                 foreach ($this->taggedFields as $key => $repeatingFormDetails) {
                         if ($this->isSurvey) {
@@ -297,7 +297,7 @@ class InstanceTable extends AbstractExternalModule
                         $this->taggedFields[$key] = $repeatingFormDetails;
                 }
         }
-        
+
         protected function setMarkup() {
                 foreach ($this->taggedFields as $key => $repeatingFormDetails) {
                         switch ($repeatingFormDetails['permission_level']) {
@@ -322,7 +322,7 @@ class InstanceTable extends AbstractExternalModule
                         $this->taggedFields[$key] = $repeatingFormDetails;
                 }
         }
-        
+
         protected function makeHtmlTable($repeatingFormDetails, $canEdit) {
                 $tableElementId = $repeatingFormDetails['html_table_id'];
                 $tableFormClass = $repeatingFormDetails['html_table_class'];
@@ -339,7 +339,7 @@ class InstanceTable extends AbstractExternalModule
                 $html = '<div class="" style="margin-top:10px; margin-bottom:'.self::ADD_NEW_BTN_YSHIFT.';">';
                 $html .= '<table id="'.$tableElementId.'" class="table table-striped table-bordered table-condensed table-responsive '.self::MODULE_VARNAME.' '.$tableFormClass.'" width="100%" cellspacing="0" style="'.$scrollStyle.'">';
                 $html .= '<thead><tr><th>#</th>'; // .$this->lang['data_entry_246'].'</th>'; // Instance
-                
+
                 $repeatingFormFields = REDCap::getDataDictionary('array', false, null, $formName);
 
                 foreach ($varList as $var) {
@@ -352,12 +352,13 @@ class InstanceTable extends AbstractExternalModule
                         $html.='<th>Form Status</th>'; // "Form Status" wording is hardcoded in MetaData::save_metadata()
                         $nColumns++;
                 }
-                
+
                 $html.='</tr></thead>';
 
                 // if survey form get data on page load (as no add/edit and have no auth for an ajax call)
                 if ($this->isSurvey) {
-                        $instanceData = $this->getInstanceData($this->record, $eventId, $formName, $varList, $filter, false);
+                        $instanceData = $this->getInstanceData($this->record, $eventId, $formName, $varList, $filter,
+                            $linkField, $linkValue, false);
                         if (count($instanceData) > 0) {
                                 $html.='<tbody>';
                                 foreach ($instanceData as $rowValues) {
@@ -382,8 +383,9 @@ class InstanceTable extends AbstractExternalModule
                 }
                 return $html;
         }
-        
-        public function getInstanceData($record, $event, $form, $fields, $filter, $includeFormStatus=true) {
+
+        public function getInstanceData($record, $event, $form, $fields, $filter, $linkField,
+                                        $linkValue, $includeFormStatus=true) {
                 global $Proj, $lang, $user_rights;
                 $this->Proj = $Proj;
                 $this->lang = &$lang;
@@ -391,21 +393,21 @@ class InstanceTable extends AbstractExternalModule
                 $this->isSurvey = (PAGE==='surveys/index.php');
                 $instanceData = array();
                 $filter = str_replace(self::REPLQUOTE_SINGLE,"'",str_replace(self::REPLQUOTE_DOUBLE,'"',$filter));
-	
+
                 // find any descriptive text fields tagged with @FORMINSTANCETABLE=form_name
-                
+
                 if (!$this->isSurvey) {
                     $this->setTaggedFields();
-                }                
+                }
                 $this->checkUserPermissions();
-                
+
                 $hasPermissions = false;
                 foreach($this->taggedFields as $fieldDetails) {
                     if($fieldDetails["form_name"] == $form && $fieldDetails["permission_level"] > 0) {
                         $hasPermissions = true;
                     }
                 }
-    
+
                 $recordDag = $this->getDAG($record);
                 if(!empty($this->user_rights["group_id"]) && $this->user_rights["group_id"] != $recordDag) {
                     $hasPermissions = false;
@@ -414,10 +416,10 @@ class InstanceTable extends AbstractExternalModule
                 if(!$hasPermissions) {
                     return array();
                 }
-                
+
                 $repeatingFormFields = REDCap::getDataDictionary('array', false, null, $form);
 
-                // ignore any supplied fields not on the repeating form 
+                // ignore any supplied fields not on the repeating form
                 $fields = array_intersect($fields, array_keys($repeatingFormFields));
 
                 if ($includeFormStatus) { $fields[] = $form.'_complete'; }
@@ -427,27 +429,28 @@ class InstanceTable extends AbstractExternalModule
                 $formKey = ($this->Proj->isRepeatingEvent($event))
                         ? ''     // repeating event - empty string key
                         : $form; // repeating form  - form name key
-                        
+
                 if (!empty($recordData[$record]['repeat_instances'][$event][$formKey])) {
                         foreach ($recordData[$record]['repeat_instances'][$event][$formKey] as $instance => $instanceFieldData) {
                                 $instance = \intval($instance);
                                 $thisInstanceValues = array();
-                                $thisInstanceValues[] = $this->makeInstanceNumDisplay($instance, $record, $event, $form, $instance);
+                                $thisInstanceValues[] = $this->makeInstanceNumDisplay($instance, $record, $event, $form, $instance, $linkField, $linkValue);
 
-                                // foreach ($instanceFieldData as $fieldName => $value) { 
+                                // foreach ($instanceFieldData as $fieldName => $value) {
                                 foreach ($fields as $fieldName) { // loop through $fields not data array so cols can be in order specified in varlist
                                         $value = $instanceFieldData[$fieldName];
                                         if (is_string($value) && trim($value)==='') { // PHP 8 doesn't like trimming checkbox array!
                                                 $thisInstanceValues[] = '';
                                                 continue;
                                         }
-                                        
+
                                         $fieldType = $repeatingFormFields[$fieldName]['field_type'];
-                                        
+
                                         if ($fieldName===$form.'_complete') {
                                                 if ($this->isSurvey) { continue; }
-                                                $outValue = $this->makeFormStatusDisplay($value, $record, $event, $form, $instance);
-                                                
+                                                $outValue = $this->makeFormStatusDisplay($value, $record, $event,
+                                                    $form, $instance, $linkField, $linkValue);
+
                                         } else if (in_array($fieldType, array("advcheckbox", "radio", "select", "checkbox", "dropdown", "sql", "yesno", "truefalse"))) {
                                                 $outValue = $this->makeChoiceDisplay($value, $repeatingFormFields, $fieldName);
 
@@ -461,38 +464,38 @@ class InstanceTable extends AbstractExternalModule
                                                         // regular text fields have null element_enum
                                                         $outValue = $this->makeTextDisplay($value, $repeatingFormFields, $fieldName);
                                                 }
-                                                
+
                                         } else if ($fieldType==='notes') {
                                                 $outValue = $this->makeTextDisplay($value, $repeatingFormFields, $fieldName);
-                                                
+
                                         } else if ($fieldType==='file') {
                                                 $outValue = $this->makeFileDisplay($value, $record, $event, $instance, $fieldName);
-                                                
+
                                         } else {
                                                 $outValue = htmlentities($value, ENT_QUOTES);
                                         }
-                                        
+
                                         $thisInstanceValues[] = $outValue;
                                 }
-                                
+
                                 $instanceData[] = $thisInstanceValues;
                         }
                 }
                 return $instanceData;
         }
-        
-        protected function makeOpenPopupAnchor($val, $record, $event, $form, $instance) {
+
+        protected function makeOpenPopupAnchor($val, $record, $event, $form, $instance, $linkField, $linkValue) {
                 if ($this->isSurvey) {
                         return $val;
                 }
-                return '<a title="Open instance" href="javascript:;" onclick="'.self::MODULE_VARNAME.'.editInstance(\''.$record.'\','.$event.',\''.$form.'\','.$instance.');">'.$val.'</a>';
+                return '<a title="Open instance" href="javascript:;" onclick="'.self::MODULE_VARNAME.'.editInstance(\''.$record.'\','.$event.',\''.$form.'\','.$instance.',\''.$linkField.'\',\''.$linkValue.'\');">'.$val.'</a>';
         }
-        
-        protected function makeInstanceNumDisplay($val, $record, $event, $form, $instance) {
-                return $this->makeOpenPopupAnchor($val, $record, $event, $form, $instance);
+
+        protected function makeInstanceNumDisplay($val, $record, $event, $form, $instance, $linkField, $linkVal) {
+                return $this->makeOpenPopupAnchor($val, $record, $event, $form, $instance, $linkField, $linkVal);
         }
-        
-        protected function makeFormStatusDisplay($val, $record, $event, $form, $instance) {
+
+        protected function makeFormStatusDisplay($val, $record, $event, $form, $instance, $linkField, $linkVal) {
                 switch ($val) {
                     case '2':
                         $circle = '<img src="'.APP_PATH_IMAGES.'circle_green.png" style="height:16px;width:16px;">';
@@ -504,16 +507,16 @@ class InstanceTable extends AbstractExternalModule
                         $circle = '<img src="'.APP_PATH_IMAGES.'circle_red.png" style="height:16px;width:16px;">';
                         break;
                 }
-                return $this->makeOpenPopupAnchor($circle, $record, $event, $form, $instance);
+                return $this->makeOpenPopupAnchor($circle, $record, $event, $form, $instance, $linkField, $linkVal);
         }
-        
+
         protected function makeChoiceDisplay($val, $repeatingFormFields, $fieldName) {
                 if ($this->Proj->metadata[$fieldName]['element_type']==='sql') {
                         $choices = parseEnum(getSqlFieldEnum($this->Proj->metadata[$fieldName]['element_enum']));
                 } else {
                         $choices = parseEnum($this->Proj->metadata[$fieldName]['element_enum']);
                 }
-                
+
                 if (is_array($val)) {
                         foreach ($val as $valkey => $cbval) {
                                 if ($cbval==='1') {
@@ -528,7 +531,7 @@ class InstanceTable extends AbstractExternalModule
                 }
                 return REDCap::filterHtml($outValue);
         }
-        
+
         protected function makeChoiceDisplayHtml($val, $choices) {
                 if (array_key_exists($val, $choices)) {
                         return $choices[$val].' <span class="text-muted">('.$val.')</span>';
@@ -575,7 +578,7 @@ class InstanceTable extends AbstractExternalModule
                         : $cachedLabel.' <span class="text-muted">('.$val.')</span>';
                 return REDCap::filterHtml($ontDisplay);
         }
-        
+
         protected function insertJS() {
                 global $lang;
                 ?>
@@ -595,6 +598,7 @@ var <?php echo self::MODULE_VARNAME;?> = (function(window, document, $, app_path
     var taggedFieldNames = [];
     var lengthVal;
     var lengthLbl;
+    var childInstances = []; // keeps instance ids of each table, keyed by tagged field name
 
     function init() {
         config.forEach(function(taggedField) {
@@ -612,7 +616,7 @@ var <?php echo self::MODULE_VARNAME;?> = (function(window, document, $, app_path
                     break;
                 default:
                     lengthVal = lengthLbl = [taggedField.page_size];
-            } 
+            }
             var thisTbl = $('#'+taggedField.html_table_id)
                     .DataTable( {
                         "stateSave": true,
@@ -623,7 +627,15 @@ var <?php echo self::MODULE_VARNAME;?> = (function(window, document, $, app_path
                 thisTbl.column( 0 ).visible( false );
             }
             if (!isSurvey) {
-                thisTbl.ajax.url(taggedField.ajax_url).load();
+              var ref = ""
+              if (taggedField.link_field != "") {
+                ref= "&link_field=" + taggedField.link_field + "&link_instance=" + taggedField.link_instance;
+              }
+              thisTbl.ajax.url(taggedField.ajax_url + ref).load();
+              const regex = new RegExp('>([0-9]+)<');
+              thisTbl.on( 'xhr', function () {
+                childInstances[taggedField.link_field] = thisTbl.ajax.json().data.map(row => regex.exec(row[0])[1]);
+              } );
             }
         });
 
@@ -640,8 +652,13 @@ var <?php echo self::MODULE_VARNAME;?> = (function(window, document, $, app_path
         init();
     });
 
-    function instancePopup(title, record, event, form, instance) {
-        var url = app_path_webroot+'DataEntry/index.php?pid='+pid+'&id='+record+'&event_id='+event+'&page='+form+'&instance='+instance+'&extmod_instance_table=1';
+    function instancePopup(title, record, event, form, instance, linkField, linkIns) {
+      const linkParams = (linkField=='') ? '':'&link_field='+linkField+'&link_instance='+linkIns;
+      const childParams = (linkField !== '' && childInstances[linkField])
+        ? "&children=" +  childInstances[linkField] : ""
+      //console.log("childParams  " + childParams, childInstances)
+      var url = app_path_webroot + 'DataEntry/index.php?pid=' + pid + '&id=' + record + '&event_id=' + event +
+          '&page=' + form + '&instance=' + instance + '&extmod_instance_table=1' + linkParams + childParams;
         popupWindow(url,title,window,700,950);
           //refreshTableDialog(event, form);
         return false;
@@ -668,12 +685,13 @@ var <?php echo self::MODULE_VARNAME;?> = (function(window, document, $, app_path
 
     return {
         addNewInstance: function(record, event, form, linkFld, linkIns) {
-            var ref = (linkFld=='')?'':'&link_field='+linkFld+'&link_instance='+linkIns;
-            instancePopup('Add instance', record, event, form, '1&extmod_instance_table_add_new=1'+ref);
+            instancePopup('Add instance', record, event, form, '1&extmod_instance_table_add_new=1', linkFld, linkIns);
             return false;
         },
-        editInstance: function(record, event, form, instance) {
-            instancePopup('View instance', record, event, form, instance);
+        editInstance: function(record, event, form, instance, linkFld, linkIns) {
+          // adding link params in edit url, otherwise, if "new instance" is clicked from popup, it loses the link
+          // connection
+          instancePopup('View instance', record, event, form, instance, linkFld, linkIns);
             return false;
         }
     }
@@ -685,7 +703,7 @@ var <?php echo self::MODULE_VARNAME;?> = (function(window, document, $, app_path
         // now start a timer and try it again after a second, to give the server ample time to persist the data
         window.setTimeout( actuallyRefreshTables(), 1500);
     }
-    
+
     function actuallyRefreshTables() {
         var tableClass = '<?php echo self::MODULE_VARNAME;?>';
         $('.'+tableClass).each(function() {
@@ -775,8 +793,23 @@ var <?php echo self::MODULE_VARNAME;?> = (function(window, document, $, app_path
             .attr('name', 'submit-btn-savenextinstance')
             .removeAttr('onclick')
             .click(function(event) {
-                var currentUrl = window.location.href;
-                var redirectUrl = $.urlParamReplace(currentUrl, "instance", 1+(1*$.urlGetParam("instance")));
+              const currentUrl = window.location.href;
+              // this replace is currently causing issues in production redcap
+              // but not sure why
+              //var redirectUrl = $.urlParamReplace(currentUrl, "instance", 1+(1*$.urlGetParam("instance")));
+              const nextInstance = 1+(parseInt($.urlGetParam("instance")));
+
+              // if the next instance is not in the list of known instance ids then it is new.
+              // don't want to go to the child instance of a different instance
+              // NOTE: this is a change in behavior.  Previously, "nextInstance"
+              // would move to the next child instance of a different instance
+              const children = $.urlGetParam("children").split(",");
+              let redirectUrl = ""
+              if (children.includes("" + nextInstance)) {
+                redirectUrl = $.urlParamReplace(currentUrl, "instance", String(nextInstance));
+              } else {
+                redirectUrl = $.urlParamReplace(currentUrl, "instance", "1&extmod_instance_table_add_new=1");
+              }
                 event.preventDefault();
                 window.opener.refreshTables();
                 dataEntrySubmit(this);
@@ -848,7 +881,7 @@ var <?php echo self::MODULE_VARNAME;?> = (function(window, document, $, app_path
                                 : $_GET['page']; // r epeating form  - form name key
 
                         $recordData = REDCap::getData('array',$_GET['id'],$_GET['page'].'_complete',$_GET['event_id']);
-                        
+
                         if (array_key_exists($_GET['id'],$recordData) &&
                             array_key_exists('repeat_instances',$recordData[$_GET['id']]) &&
                             array_key_exists($_GET['event_id'], $recordData[$_GET['id']]['repeat_instances'])) {
@@ -863,10 +896,10 @@ var <?php echo self::MODULE_VARNAME;?> = (function(window, document, $, app_path
 
                         // which $lang element is this?
                         $langElement = array_search($lastActionTagDesc, $this->lang);
-                        
+
                         $lastActionTagDesc .= "</td></tr>";
                         $lastActionTagDesc .= $this->makeTagTR(static::ACTION_TAG, static::ACTION_TAG_DESC);
-                        
+
                         $this->lang[$langElement] = rtrim(rtrim(rtrim(trim($lastActionTagDesc), '</tr>')),'</td>');
                 }
         }
