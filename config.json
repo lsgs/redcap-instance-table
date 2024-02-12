@@ -49,6 +49,14 @@
 		{
             "tag": "@INSTANCETABLE_FILTER",
             "description": "Tag @INSTANCETABLE_FILTER='[v]=1': Specify a logic expression to show only instances that match the filter expression."
+        },
+		{
+            "tag": "@INSTANCETABLE_ADDBTNLABEL",
+            "description": "Use <code>@INSTANCETABLE_ADDBTNLABEL='Label name'</code> to add a new Label on the 'Add new' button."
+        },
+        {
+            "tag": "@INSTANCETABLE_HIDECHOICEVAL",
+            "description": "Use <code>@INSTANCETABLE_HIDECHOICEVAL for display of choice field data to not include the value."
         }
 		
     ],
