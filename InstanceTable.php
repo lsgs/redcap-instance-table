@@ -28,6 +28,8 @@ class InstanceTable extends AbstractExternalModule
         protected $group_id;
         protected $repeat_instance;
         protected $defaultValueForNewPopup;
+	protected $hideChoice;
+
 
         const ACTION_TAG = '@INSTANCETABLE';
         const ACTION_TAG_HIDE_FIELD = '@INSTANCETABLE_HIDE';
@@ -42,6 +44,7 @@ class InstanceTable extends AbstractExternalModule
         const ACTION_TAG_DST = '@INSTANCETABLE_DST'; // deprecated
         const ACTION_TAG_FILTER = '@INSTANCETABLE_FILTER';
 	const ACTION_TAG_ADDBTNLABEL = '@INSTANCETABLE_ADDBTNLABEL';
+	const ACTION_TAG_HIDECHOICEVAL = '@INSTANCETABLE_HIDECHOICEVAL';
         const ADD_NEW_BTN_YSHIFT = '0px';
         const MODULE_VARNAME = 'MCRI_InstanceTable';
 
@@ -268,6 +271,10 @@ class InstanceTable extends AbstractExternalModule
                                 $repeatingFormDetails['button_label'] = $value;
                                 } else{
                                         $repeatingFormDetails['button_label'] = '';
+                                }
+
+				 if (preg_match("/" . self::ACTION_TAG_HIDECHOICEVAL . "/", $fieldDetails['field_annotation'], $matches)) {
+                                        $this->hideChoice = true;
                                 }
 				
                                 $this->taggedFields[] = $repeatingFormDetails;
@@ -539,9 +546,13 @@ class InstanceTable extends AbstractExternalModule
                 return REDCap::filterHtml($outValue);
         }
         
-        protected function makeChoiceDisplayHtml($val, $choices) {
+  protected function makeChoiceDisplayHtml($val, $choices)
+        {
                 if (array_key_exists($val, $choices)) {
-                        return $choices[$val].' <span class="text-muted">('.$val.')</span>';
+                        if ($this->hideChoice) {
+                                return $choices[$val];
+                        }
+                        return $choices[$val] . ' <span class="text-muted">(' . $val . ')</span>';
                 }
                 return $val;
         }
@@ -550,21 +561,42 @@ class InstanceTable extends AbstractExternalModule
                 if (trim($val)=='') { return ''; }
                 $valType = $repeatingFormFields[$fieldName]['text_validation_type_or_show_slider_number'];
                 switch ($valType) {
-                    case 'date_mdy':
-                    case 'date_dmy':
-                    case 'datetime_mdy':
-                    case 'datetime_dmy':
-                    case 'datetime_seconds_mdy':
-                    case 'datetime_seconds_dmy':
-                        $outVal = DateTimeRC::datetimeConvert($val, 'ymd', substr($valType, -3)); // reformat raw ymd date/datetime value to mdy or dmy, if appropriate
-                        $outVal = $val; // stick with standard ymd format for better sorting
-                        break;
-                    case 'email':
-                        $outVal = "<a href='mailto:$val'>$val</a>";
-                        break;
-                    default:
-                        $outVal = $val;
-                        break;
+                        case 'date_mdy':
+                                $outVal = date("m-d-Y", strtotime($val));
+                                break;
+                        case 'date_dmy':
+                                $outVal = date("d-m-Y", strtotime($val));
+                                break;
+                        case 'datetime_mdy':
+                                $dateWithTime = date("Y-m-d H:i", strtotime($val));
+                                if ($dateWithTime == $val) {
+                                        $outVal = date("d-m-Y H:i", strtotime($val));
+                                } else {
+                                        $outVal = date("d-m-Y", strtotime($val));
+                                }
+                                break;
+                        case 'datetime_dmy':
+                        case 'datetime_seconds_mdy':
+                                $dateWithTimewiths = date("Y-m-d H:i:s", strtotime($val));
+                                $dateWithTime = date("Y-m-d H:i", strtotime($val));
+                                if ($dateWithTimewiths == $val) {
+                                        $outVal = date("d-m-Y H:i:s", strtotime($val));
+                                } else if($dateWithTime == $val) {
+                                        $outVal = date("d-m-Y H:i", strtotime($val));
+                                }else{
+                                        $outVal = date("d-m-Y", strtotime($val));     
+                                }
+                                break;
+                        case 'datetime_seconds_dmy':
+                                $outVal = DateTimeRC::datetimeConvert($val, 'ymd', substr($valType, -3)); // reformat raw ymd date/datetime value to mdy or dmy, if appropriate
+                                $outVal = $valType; // stick with standard ymd format for better sorting
+                                break;
+                        case 'email':
+                                $outVal = "<a href='mailto:$val'>$val</a>";
+                                break;
+                        default:
+                                $outVal = $val;
+                                break;
                 }
                 return REDCap::filterHtml($outVal);
         }
