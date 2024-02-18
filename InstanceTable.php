@@ -466,7 +466,7 @@ class InstanceTable extends AbstractExternalModule
                                                 $outValue = $this->makeTextDisplay($value, $repeatingFormFields, $fieldName);
                                                 
                                         } else if ($fieldType==='file') {
-                                                $outValue = $this->makeFileDisplay($value, $record, $event, $instance, $fieldName);
+                                                $outValue = $this->makeFileDisplay($value, $record, $event, $instance, $fieldName, $survey_hash);
                                                 
                                         } else {
                                                 $outValue = htmlentities($value, ENT_QUOTES);
@@ -492,7 +492,7 @@ class InstanceTable extends AbstractExternalModule
                 return $this->makeOpenPopupAnchor($val, $record, $event, $form, $instance);
         }
         
-        protected function makeFormStatusDisplay($val, $record, $event, $form, $instance) {
+        protected function makeFormStatusDisplay($val, $record, $event, $form, $instance, ) {
                 switch ($val) {
                     case '2':
                         $circle = '<img src="'.APP_PATH_IMAGES.'circle_green.png" style="height:16px;width:16px;">';
@@ -559,9 +559,14 @@ class InstanceTable extends AbstractExternalModule
                 return REDCap::filterHtml($outVal);
         }
 
-        protected function makeFileDisplay($val, $record, $event_id, $instance, $fieldName) {
+        protected function makeFileDisplay($val, $record, $event_id, $instance, $fieldName, $survey_hash) {
+		$survery_hash = $_GET['s'];
+                if ($this->isSurvey){
+                $downloadDocUrl = APP_PATH_SURVEY . "index.php?pid=".PROJECT_ID."&__passthru=".urlencode("DataEntry/file_download.php")."&doc_id_hash=".Files::docIdHash($val)."&id=$val&s=$survery_hash&record=$record&event_id=$event_id&field_name=$fieldName&instance=$instance";
+        }else{
                 $downloadDocUrl = APP_PATH_WEBROOT.'DataEntry/file_download.php?pid='.PROJECT_ID."&s=&record=$record&event_id=$event_id&instance=$instance&field_name=$fieldName&id=$val&doc_id_hash=".Files::docIdHash($val);
-                $fileDlBtn = "<button class='btn btn-defaultrc btn-xs' style='font-size:8pt;' onclick=\"window.open('$downloadDocUrl','_blank');return false;\">{$this->lang['design_121']}</button>";
+	}
+		$fileDlBtn = "<button class='btn btn-defaultrc btn-xs' style='font-size:8pt;' onclick=\"window.open('$downloadDocUrl','_blank');return false;\">{$this->lang['design_121']}</button>";
                 return str_replace('removed=','onclick=',REDCap::filterHtml($fileDlBtn));
         }
 
