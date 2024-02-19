@@ -380,7 +380,8 @@ class InstanceTable extends AbstractExternalModule
                                 foreach ($instanceData as $rowValues) {
                                         $html.='<tr>';
                                         foreach ($rowValues as $value) {
-                                                $html.="<td>".REDCap::filterHtml($value)."</td>"; // $html.="<td>".htmlspecialchars($value, ENT_QUOTES)."</td>";
+                                                $value = str_replace('removed="window.open(','onclick="window.open(',REDCap::filterHtml($value)); // <button removed="window.open( ... >Download</button> file downloads
+                                                $html.="<td>$value</td>";
                                         }
                                         $html.='</tr>';
                                 }
@@ -483,7 +484,7 @@ class InstanceTable extends AbstractExternalModule
                                                 $outValue = $this->makeTextDisplay($value, $repeatingFormFields, $fieldName);
                                                 
                                         } else if ($fieldType==='file') {
-                                                $outValue = $this->makeFileDisplay($value, $record, $event, $instance, $fieldName);
+                                                $outValue = $this->makeFileDisplay($value, $record, $event, $instance, $fieldName, $survey_hash);
                                                 
                                         } else {
                                                 $outValue = htmlentities($value, ENT_QUOTES);
@@ -509,7 +510,7 @@ class InstanceTable extends AbstractExternalModule
                 return $this->makeOpenPopupAnchor($val, $record, $event, $form, $instance);
         }
         
-        protected function makeFormStatusDisplay($val, $record, $event, $form, $instance) {
+        protected function makeFormStatusDisplay($val, $record, $event, $form, $instance, ) {
                 switch ($val) {
                     case '2':
                         $circle = '<img src="'.APP_PATH_IMAGES.'circle_green.png" style="height:16px;width:16px;">';
@@ -601,9 +602,14 @@ class InstanceTable extends AbstractExternalModule
                 return REDCap::filterHtml($outVal);
         }
 
-        protected function makeFileDisplay($val, $record, $event_id, $instance, $fieldName) {
+        protected function makeFileDisplay($val, $record, $event_id, $instance, $fieldName, $survey_hash) {
+		$survery_hash = $_GET['s'];
+                if ($this->isSurvey){
+                $downloadDocUrl = APP_PATH_SURVEY . "index.php?pid=".PROJECT_ID."&__passthru=".urlencode("DataEntry/file_download.php")."&doc_id_hash=".Files::docIdHash($val)."&id=$val&s=$survery_hash&record=$record&event_id=$event_id&field_name=$fieldName&instance=$instance";
+        }else{
                 $downloadDocUrl = APP_PATH_WEBROOT.'DataEntry/file_download.php?pid='.PROJECT_ID."&s=&record=$record&event_id=$event_id&instance=$instance&field_name=$fieldName&id=$val&doc_id_hash=".Files::docIdHash($val);
-                $fileDlBtn = "<button class='btn btn-defaultrc btn-xs' style='font-size:8pt;' onclick=\"window.open('$downloadDocUrl','_blank');return false;\">{$this->lang['design_121']}</button>";
+	}
+		$fileDlBtn = "<button class='btn btn-defaultrc btn-xs' style='font-size:8pt;' onclick=\"window.open('$downloadDocUrl','_blank');return false;\">{$this->lang['design_121']}</button>";
                 return str_replace('removed=','onclick=',REDCap::filterHtml($fileDlBtn));
         }
 
@@ -876,15 +882,13 @@ var <?php echo self::MODULE_VARNAME;?> = (function(window, document, $, app_path
          * - Augment the action_tag_explain content on project Design pages by adding some additional tr following the last built-in action tag.
          * @param type $project_id
          */
-       public function redcap_every_page_before_render($project_id) {
+         public function redcap_every_page_before_render($project_id) {
                 if (isset($_POST['extmod_closerec_home'])) {
                         $_SESSION['extmod_closerec_home'] = $_POST['extmod_closerec_home'];
 
-                } else if (PAGE==='DataEntry/index.php' && isset($_GET['extmod_instance_table']) && isset($_GET['extmod_instance_table_add_new'])) {
-                        global $Proj, $lang, $user_rights;
+                } else if (PAGE==='DataEntry/index.php' && isset($_GET['extmod_instance_table']) && isset($_GET['extmod_instance_table_add_new']) && !is_null($project_id) && isset(($_GET['event_id']))) {
+                        global $Proj;
                         $this->Proj = $Proj;
-                        $this->lang = &$lang;
-                        $this->user_rights = &$user_rights;
                         $this->isSurvey = false;
                         // adding new instance - read current max and redirect to + 1
                         $formKey = ($this->Proj->isRepeatingEvent($_GET['event_id']))
@@ -901,7 +905,6 @@ var <?php echo self::MODULE_VARNAME;?> = (function(window, document, $, app_path
                         } else {
                                 $_GET['instance'] = 1;
                         }
-
                 } 
         }
 }
