@@ -46,6 +46,10 @@
         {
             "tag": "@INSTANCETABLE_FILTER",
             "description": "Use <code>@INSTANCETABLE_FILTER='[v]=1'</code> to specify a logic expression to show only instances that match the filter expression."
+        },
+        {
+            "tag": "@INSTANCETABLE_ADDBTNLABEL",
+            "description": "Use <code>@INSTANCETABLE_ADDBTNLABEL='Button Label'</code> to specify an alternative label for the \"Add New Instance\" button (\"New Medication\", \"Add new instance\" etc.)."
         }
     ],
     "system-settings": [ ],

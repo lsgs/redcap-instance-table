@@ -28,6 +28,8 @@ class InstanceTable extends AbstractExternalModule
         protected $group_id;
         protected $repeat_instance;
         protected $defaultValueForNewPopup;
+	protected $hideChoice;
+
 
         const ACTION_TAG = '@INSTANCETABLE';
         const ACTION_TAG_HIDE_FIELD = '@INSTANCETABLE_HIDE';
@@ -38,9 +40,11 @@ class InstanceTable extends AbstractExternalModule
         const ACTION_TAG_VARLIST = '@INSTANCETABLE_VARLIST'; // provide a comma-separated list of variables to include (not including any tagged HIDE)
         const ACTION_TAG_PAGESIZE = '@INSTANCETABLE_PAGESIZE'; // Override default choices for page sizing: specify integer default page size, use -1 for All
         const ACTION_TAG_REF = '@INSTANCETABLE_REF';
-        const ACTION_TAG_SRC = '@INSTANCETABLE_SRC'; // deprecated
+	const ACTION_TAG_SRC = '@INSTANCETABLE_SRC'; // deprecated
         const ACTION_TAG_DST = '@INSTANCETABLE_DST'; // deprecated
         const ACTION_TAG_FILTER = '@INSTANCETABLE_FILTER';
+	const ACTION_TAG_ADDBTNLABEL = '@INSTANCETABLE_ADDBTNLABEL';
+	const ACTION_TAG_HIDECHOICEVAL = '@INSTANCETABLE_HIDECHOICEVAL';
         const ADD_NEW_BTN_YSHIFT = '0px';
         const MODULE_VARNAME = 'MCRI_InstanceTable';
 
@@ -260,7 +264,19 @@ class InstanceTable extends AbstractExternalModule
                                 } else {
                                         $repeatingFormDetails['hide_add_btn'] = false;
                                 }
+
                                 
+                                if (preg_match("/".self::ACTION_TAG_ADDBTNLABEL."\s*=\'([^\']+)\'/", $fieldDetails['field_annotation'], $matches)) {
+                                $value = $matches[1];
+                                $repeatingFormDetails['button_label'] = $value;
+                                } else{
+                                        $repeatingFormDetails['button_label'] = '';
+                                }
+
+				 if (preg_match("/" . self::ACTION_TAG_HIDECHOICEVAL . "/", $fieldDetails['field_annotation'], $matches)) {
+                                        $this->hideChoice = true;
+                                }
+				
                                 $this->taggedFields[] = $repeatingFormDetails;
                         }
                 }
@@ -329,6 +345,7 @@ class InstanceTable extends AbstractExternalModule
                 $eventId = $repeatingFormDetails['event_id'];
                 $formName = $repeatingFormDetails['form_name'];
                 $scrollX = $repeatingFormDetails['scroll_x'];
+		$btnlabel = $repeatingFormDetails['button_label'];
                 $linkField = $repeatingFormDetails['link_field'];
                 $linkValue = $repeatingFormDetails['link_instance'];
                 $filter = $repeatingFormDetails['filter']; // The filter actually contains linkfield=linkvalue
@@ -376,9 +393,10 @@ class InstanceTable extends AbstractExternalModule
                 }
 
                 $html.='</table>';
-
+		
+               $btnlabelval = $btnlabel == '' ? $this->lang['data_entry_247'] : $btnlabel;
                 if ($canEdit) {
-                        $html.='<div style="position:relative;top:'.self::ADD_NEW_BTN_YSHIFT.';margin-bottom:5px;"><button type="button" class="btn btn-sm btn-success " onclick="'.self::MODULE_VARNAME.'.addNewInstance(\''.$this->record.'\','.$eventId.',\''.$formName.'\',\''.$linkField.'\',\''.$linkValue.'\');"><span class="fas fa-plus-circle" aria-hidden="true"></span>&nbsp;'.$this->lang['data_entry_247'].'</button></div>'; // Add new
+                        $html.='<div style="position:relative;top:'.self::ADD_NEW_BTN_YSHIFT.';margin-bottom:5px;"><button type="button" class="btn btn-sm btn-success " onclick="'.self::MODULE_VARNAME.'.addNewInstance(\''.$this->record.'\','.$eventId.',\''.$formName.'\',\''.$linkField.'\',\''.$linkValue.'\');"><span class="fas fa-plus-circle" aria-hidden="true"></span>&nbsp;'.$btnlabelval.'</button></div>'; // Add new
                 }
                 return $html;
         }
@@ -529,9 +547,13 @@ class InstanceTable extends AbstractExternalModule
                 return REDCap::filterHtml($outValue);
         }
         
-        protected function makeChoiceDisplayHtml($val, $choices) {
+  protected function makeChoiceDisplayHtml($val, $choices)
+        {
                 if (array_key_exists($val, $choices)) {
-                        return $choices[$val].' <span class="text-muted">('.$val.')</span>';
+                        if ($this->hideChoice) {
+                                return $choices[$val];
+                        }
+                        return $choices[$val] . ' <span class="text-muted">(' . $val . ')</span>';
                 }
                 return $val;
         }
@@ -540,21 +562,42 @@ class InstanceTable extends AbstractExternalModule
                 if (trim($val)=='') { return ''; }
                 $valType = $repeatingFormFields[$fieldName]['text_validation_type_or_show_slider_number'];
                 switch ($valType) {
-                    case 'date_mdy':
-                    case 'date_dmy':
-                    case 'datetime_mdy':
-                    case 'datetime_dmy':
-                    case 'datetime_seconds_mdy':
-                    case 'datetime_seconds_dmy':
-                        $outVal = DateTimeRC::datetimeConvert($val, 'ymd', substr($valType, -3)); // reformat raw ymd date/datetime value to mdy or dmy, if appropriate
-                        $outVal = $val; // stick with standard ymd format for better sorting
-                        break;
-                    case 'email':
-                        $outVal = "<a href='mailto:$val'>$val</a>";
-                        break;
-                    default:
-                        $outVal = $val;
-                        break;
+                        case 'date_mdy':
+                                $outVal = date("m-d-Y", strtotime($val));
+                                break;
+                        case 'date_dmy':
+                                $outVal = date("d-m-Y", strtotime($val));
+                                break;
+                        case 'datetime_mdy':
+                                $dateWithTime = date("Y-m-d H:i", strtotime($val));
+                                if ($dateWithTime == $val) {
+                                        $outVal = date("d-m-Y H:i", strtotime($val));
+                                } else {
+                                        $outVal = date("d-m-Y", strtotime($val));
+                                }
+                                break;
+                        case 'datetime_dmy':
+                        case 'datetime_seconds_mdy':
+                                $dateWithTimewiths = date("Y-m-d H:i:s", strtotime($val));
+                                $dateWithTime = date("Y-m-d H:i", strtotime($val));
+                                if ($dateWithTimewiths == $val) {
+                                        $outVal = date("d-m-Y H:i:s", strtotime($val));
+                                } else if($dateWithTime == $val) {
+                                        $outVal = date("d-m-Y H:i", strtotime($val));
+                                }else{
+                                        $outVal = date("d-m-Y", strtotime($val));     
+                                }
+                                break;
+                        case 'datetime_seconds_dmy':
+                                $outVal = DateTimeRC::datetimeConvert($val, 'ymd', substr($valType, -3)); // reformat raw ymd date/datetime value to mdy or dmy, if appropriate
+                                $outVal = $valType; // stick with standard ymd format for better sorting
+                                break;
+                        case 'email':
+                                $outVal = "<a href='mailto:$val'>$val</a>";
+                                break;
+                        default:
+                                $outVal = $val;
+                                break;
                 }
                 return REDCap::filterHtml($outVal);
         }
@@ -839,7 +882,7 @@ var <?php echo self::MODULE_VARNAME;?> = (function(window, document, $, app_path
          * - Augment the action_tag_explain content on project Design pages by adding some additional tr following the last built-in action tag.
          * @param type $project_id
          */
-      public function redcap_every_page_before_render($project_id) {
+         public function redcap_every_page_before_render($project_id) {
                 if (isset($_POST['extmod_closerec_home'])) {
                         $_SESSION['extmod_closerec_home'] = $_POST['extmod_closerec_home'];
 
