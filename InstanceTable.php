@@ -28,8 +28,6 @@ class InstanceTable extends AbstractExternalModule
         protected $group_id;
         protected $repeat_instance;
         protected $defaultValueForNewPopup;
-	protected $hideChoice;
-
 
         const ACTION_TAG = '@INSTANCETABLE';
         const ACTION_TAG_HIDE_FIELD = '@INSTANCETABLE_HIDE';
@@ -40,11 +38,11 @@ class InstanceTable extends AbstractExternalModule
         const ACTION_TAG_VARLIST = '@INSTANCETABLE_VARLIST'; // provide a comma-separated list of variables to include (not including any tagged HIDE)
         const ACTION_TAG_PAGESIZE = '@INSTANCETABLE_PAGESIZE'; // Override default choices for page sizing: specify integer default page size, use -1 for All
         const ACTION_TAG_REF = '@INSTANCETABLE_REF';
-	const ACTION_TAG_SRC = '@INSTANCETABLE_SRC'; // deprecated
+        const ACTION_TAG_SRC = '@INSTANCETABLE_SRC'; // deprecated
         const ACTION_TAG_DST = '@INSTANCETABLE_DST'; // deprecated
         const ACTION_TAG_FILTER = '@INSTANCETABLE_FILTER';
-	const ACTION_TAG_ADDBTNLABEL = '@INSTANCETABLE_ADDBTNLABEL';
-	const ACTION_TAG_HIDECHOICEVAL = '@INSTANCETABLE_HIDECHOICEVAL';
+        const ACTION_TAG_ADDBTNLABEL = '@INSTANCETABLE_ADDBTNLABEL';
+        const ACTION_TAG_HIDECHOICEVALUES = '@INSTANCETABLE_HIDECHOICEVALUES';
         const ADD_NEW_BTN_YSHIFT = '0px';
         const MODULE_VARNAME = 'MCRI_InstanceTable';
 
@@ -250,33 +248,37 @@ class InstanceTable extends AbstractExternalModule
 
                                 $ajaxUrl = $this->getUrl('instance_table_ajax.php');
                                 $filter = htmlspecialchars(str_replace("'",self::REPLQUOTE_SINGLE,str_replace('"',self::REPLQUOTE_DOUBLE,$filter)), ENT_QUOTES);
-                                $repeatingFormDetails['ajax_url'] = $ajaxUrl."&record={$this->record}&event_id=$eventId&form_name=$formName&filter=$filter&fields=".implode('|',$includeVars);
-                                $repeatingFormDetails['markup'] = '';
 
-                                if (preg_match("/".self::ACTION_TAG_SCROLLX."/", $fieldDetails['field_annotation'], $matches)) {
+                                if (preg_match("/".self::ACTION_TAG_SCROLLX."/", $fieldDetails['field_annotation'])) {
                                         $repeatingFormDetails['scroll_x'] = true;
                                 } else {
                                         $repeatingFormDetails['scroll_x'] = false;
                                 }
 
-                                if (preg_match("/".self::ACTION_TAG_HIDEADDBTN."/", $fieldDetails['field_annotation'], $matches)) {
+                                if (preg_match("/".self::ACTION_TAG_HIDEADDBTN."/", $fieldDetails['field_annotation'])) {
                                         $repeatingFormDetails['hide_add_btn'] = true;
                                 } else {
                                         $repeatingFormDetails['hide_add_btn'] = false;
                                 }
 
-                                
+                                $matches = array();
                                 if (preg_match("/".self::ACTION_TAG_ADDBTNLABEL."\s*=\'([^\']+)\'/", $fieldDetails['field_annotation'], $matches)) {
-                                $value = $matches[1];
-                                $repeatingFormDetails['button_label'] = $value;
-                                } else{
-                                        $repeatingFormDetails['button_label'] = '';
+                                    $repeatingFormDetails['button_label'] = REDCap::filterHtml($matches[1]);
+                                } else {
+                                    $repeatingFormDetails['button_label'] = '';
                                 }
 
-				 if (preg_match("/" . self::ACTION_TAG_HIDECHOICEVAL . "/", $fieldDetails['field_annotation'], $matches)) {
-                                        $this->hideChoice = true;
+                                if (preg_match("/".self::ACTION_TAG_HIDECHOICEVALUES."/", $fieldDetails['field_annotation'])) {
+                                    $hideVals = '&hide_vals=1';
+                                    $repeatingFormDetails['hide_choice_values'] = true;
+                                } else {
+                                    $hideVals = '';
+                                    $repeatingFormDetails['hide_choice_values'] = false;
                                 }
-				
+
+                                $repeatingFormDetails['ajax_url'] = $ajaxUrl."$hideVals&record={$this->record}&event_id=$eventId&form_name=$formName&filter=$filter&fields=".implode('|',$includeVars);
+                                $repeatingFormDetails['markup'] = '';
+
                                 $this->taggedFields[] = $repeatingFormDetails;
                         }
                 }
@@ -345,11 +347,12 @@ class InstanceTable extends AbstractExternalModule
                 $eventId = $repeatingFormDetails['event_id'];
                 $formName = $repeatingFormDetails['form_name'];
                 $scrollX = $repeatingFormDetails['scroll_x'];
-		$btnlabel = $repeatingFormDetails['button_label'];
                 $linkField = $repeatingFormDetails['link_field'];
                 $linkValue = $repeatingFormDetails['link_instance'];
                 $filter = $repeatingFormDetails['filter']; // The filter actually contains linkfield=linkvalue
                 $varList = $repeatingFormDetails['var_list'];
+                $btnLabel = ($repeatingFormDetails['button_label']=='') ? $this->lang['data_entry_247'] : $repeatingFormDetails['button_label'];
+                $hideChoiceValues = $repeatingFormDetails['hide_choice_values'];
 
                 $scrollStyle = ($scrollX) ? "display:block; max-width:790px;" : "";
                 $nColumns = 1; // start at 1 for # (Instance) column
@@ -374,7 +377,7 @@ class InstanceTable extends AbstractExternalModule
 
                 // if survey form get data on page load (as no add/edit and have no auth for an ajax call)
                 if ($this->isSurvey) {
-                        $instanceData = $this->getInstanceData($this->record, $eventId, $formName, $varList, $filter, false);
+                        $instanceData = $this->getInstanceData($this->record, $eventId, $formName, $varList, $filter, false, $hideChoiceValues);
                         if (count($instanceData) > 0) {
                                 $html.='<tbody>';
                                 foreach ($instanceData as $rowValues) {
@@ -388,20 +391,19 @@ class InstanceTable extends AbstractExternalModule
                                 $html.='</tbody>';
                         } else {
                                 // $html.='<tr><td colspan="'.$nColumns.'">No data available in table</td></tr>';
-                                // unnecessary and DT does not supprt colspan in body tr // https://datatables.net/forums/discussion/32575/uncaught-typeerror-cannot-set-property-dt-cellindex-of-undefined
+                                // unnecessary and DT does not support colspan in body tr // https://datatables.net/forums/discussion/32575/uncaught-typeerror-cannot-set-property-dt-cellindex-of-undefined
                         }
                 }
 
                 $html.='</table>';
-		
-               $btnlabelval = $btnlabel == '' ? $this->lang['data_entry_247'] : $btnlabel;
+
                 if ($canEdit) {
-                        $html.='<div style="position:relative;top:'.self::ADD_NEW_BTN_YSHIFT.';margin-bottom:5px;"><button type="button" class="btn btn-sm btn-success " onclick="'.self::MODULE_VARNAME.'.addNewInstance(\''.$this->record.'\','.$eventId.',\''.$formName.'\',\''.$linkField.'\',\''.$linkValue.'\');"><span class="fas fa-plus-circle" aria-hidden="true"></span>&nbsp;'.$btnlabelval.'</button></div>'; // Add new
+                        $html.='<div style="position:relative;top:'.self::ADD_NEW_BTN_YSHIFT.';margin-bottom:5px;"><button type="button" class="btn btn-sm btn-success " onclick="'.self::MODULE_VARNAME.'.addNewInstance(\''.$this->record.'\','.$eventId.',\''.$formName.'\',\''.$linkField.'\',\''.$linkValue.'\');"><span class="fas fa-plus-circle mr-1" aria-hidden="true"></span>'.$btnLabel.'</button></div>'; // Add new
                 }
                 return $html;
         }
         
-        public function getInstanceData($record, $event, $form, $fields, $filter, $includeFormStatus=true) {
+        public function getInstanceData($record, $event, $form, $fields, $filter, $includeFormStatus=true, $hideChoiceValues=false) {
                 global $Proj, $lang, $user_rights;
                 $this->Proj = $Proj;
                 $this->lang = &$lang;
@@ -467,7 +469,7 @@ class InstanceTable extends AbstractExternalModule
                                                 $outValue = $this->makeFormStatusDisplay($value, $record, $event, $form, $instance);
                                                 
                                         } else if (in_array($fieldType, array("advcheckbox", "radio", "select", "checkbox", "dropdown", "sql", "yesno", "truefalse"))) {
-                                                $outValue = $this->makeChoiceDisplay($value, $repeatingFormFields, $fieldName);
+                                                $outValue = $this->makeChoiceDisplay($value, $repeatingFormFields, $fieldName, $hideChoiceValues);
 
                                         } else if ($fieldType==='text') {
                                                 $ontologyOption = $this->Proj->metadata[$fieldName]['element_enum'];
@@ -484,7 +486,7 @@ class InstanceTable extends AbstractExternalModule
                                                 $outValue = $this->makeTextDisplay($value, $repeatingFormFields, $fieldName);
                                                 
                                         } else if ($fieldType==='file') {
-                                                $outValue = $this->makeFileDisplay($value, $record, $event, $instance, $fieldName, $survey_hash);
+                                                $outValue = $this->makeFileDisplay($value, $record, $event, $instance, $fieldName);
                                                 
                                         } else {
                                                 $outValue = htmlentities($value, ENT_QUOTES);
@@ -510,7 +512,7 @@ class InstanceTable extends AbstractExternalModule
                 return $this->makeOpenPopupAnchor($val, $record, $event, $form, $instance);
         }
         
-        protected function makeFormStatusDisplay($val, $record, $event, $form, $instance, ) {
+        protected function makeFormStatusDisplay($val, $record, $event, $form, $instance) {
                 switch ($val) {
                     case '2':
                         $circle = '<img src="'.APP_PATH_IMAGES.'circle_green.png" style="height:16px;width:16px;">';
@@ -525,7 +527,7 @@ class InstanceTable extends AbstractExternalModule
                 return $this->makeOpenPopupAnchor($circle, $record, $event, $form, $instance);
         }
         
-        protected function makeChoiceDisplay($val, $repeatingFormFields, $fieldName) {
+        protected function makeChoiceDisplay($val, $repeatingFormFields, $fieldName, $hideChoiceValues=false) {
                 if ($this->Proj->metadata[$fieldName]['element_type']==='sql') {
                         $choices = parseEnum(getSqlFieldEnum($this->Proj->metadata[$fieldName]['element_enum']));
                 } else {
@@ -535,25 +537,22 @@ class InstanceTable extends AbstractExternalModule
                 if (is_array($val)) {
                         foreach ($val as $valkey => $cbval) {
                                 if ($cbval==='1') {
-                                        $val[$valkey] = $this->makeChoiceDisplayHtml($valkey, $choices);
+                                        $val[$valkey] = $this->makeChoiceDisplayHtml($valkey, $choices, $hideChoiceValues);
                                 } else {
                                         unset($val[$valkey]);
                                 }
                         }
                         $outValue = implode('<br>', $val); // multiple checkbox selections one per line
                 } else {
-                        $outValue = $this->makeChoiceDisplayHtml($val, $choices);
+                        $outValue = $this->makeChoiceDisplayHtml($val, $choices, $hideChoiceValues);
                 }
                 return REDCap::filterHtml($outValue);
         }
         
-  protected function makeChoiceDisplayHtml($val, $choices)
-        {
+        protected function makeChoiceDisplayHtml($val, $choices, $hideChoiceValues=false) {
                 if (array_key_exists($val, $choices)) {
-                        if ($this->hideChoice) {
-                                return $choices[$val];
-                        }
-                        return $choices[$val] . ' <span class="text-muted">(' . $val . ')</span>';
+                        $valDisplay = ($hideChoiceValues) ? '' : ' <span class="text-muted">('.$val.')</span>';
+                        return $choices[$val].$valDisplay;
                 }
                 return $val;
         }
@@ -562,54 +561,33 @@ class InstanceTable extends AbstractExternalModule
                 if (trim($val)=='') { return ''; }
                 $valType = $repeatingFormFields[$fieldName]['text_validation_type_or_show_slider_number'];
                 switch ($valType) {
-                        case 'date_mdy':
-                                $outVal = date("m-d-Y", strtotime($val));
-                                break;
-                        case 'date_dmy':
-                                $outVal = date("d-m-Y", strtotime($val));
-                                break;
-                        case 'datetime_mdy':
-                                $dateWithTime = date("Y-m-d H:i", strtotime($val));
-                                if ($dateWithTime == $val) {
-                                        $outVal = date("d-m-Y H:i", strtotime($val));
-                                } else {
-                                        $outVal = date("d-m-Y", strtotime($val));
-                                }
-                                break;
-                        case 'datetime_dmy':
-                        case 'datetime_seconds_mdy':
-                                $dateWithTimewiths = date("Y-m-d H:i:s", strtotime($val));
-                                $dateWithTime = date("Y-m-d H:i", strtotime($val));
-                                if ($dateWithTimewiths == $val) {
-                                        $outVal = date("d-m-Y H:i:s", strtotime($val));
-                                } else if($dateWithTime == $val) {
-                                        $outVal = date("d-m-Y H:i", strtotime($val));
-                                }else{
-                                        $outVal = date("d-m-Y", strtotime($val));     
-                                }
-                                break;
-                        case 'datetime_seconds_dmy':
-                                $outVal = DateTimeRC::datetimeConvert($val, 'ymd', substr($valType, -3)); // reformat raw ymd date/datetime value to mdy or dmy, if appropriate
-                                $outVal = $valType; // stick with standard ymd format for better sorting
-                                break;
-                        case 'email':
-                                $outVal = "<a href='mailto:$val'>$val</a>";
-                                break;
-                        default:
-                                $outVal = $val;
-                                break;
+                    case 'date_mdy':
+                    case 'date_dmy':
+                    case 'datetime_mdy':
+                    case 'datetime_dmy':
+                    case 'datetime_seconds_mdy':
+                    case 'datetime_seconds_dmy':
+                        $outVal = DateTimeRC::datetimeConvert($val, 'ymd', substr($valType, -3)); // reformat raw ymd date/datetime value to mdy or dmy, if appropriate
+                        $outVal = $val; // stick with standard ymd format for better sorting
+                        break;
+                    case 'email':
+                        $outVal = "<a href='mailto:$val'>$val</a>";
+                        break;
+                    default:
+                        $outVal = $val;
+                        break;
                 }
                 return REDCap::filterHtml($outVal);
         }
 
-        protected function makeFileDisplay($val, $record, $event_id, $instance, $fieldName, $survey_hash) {
-		$survery_hash = $_GET['s'];
-                if ($this->isSurvey){
-                $downloadDocUrl = APP_PATH_SURVEY . "index.php?pid=".PROJECT_ID."&__passthru=".urlencode("DataEntry/file_download.php")."&doc_id_hash=".Files::docIdHash($val)."&id=$val&s=$survery_hash&record=$record&event_id=$event_id&field_name=$fieldName&instance=$instance";
-        }else{
-                $downloadDocUrl = APP_PATH_WEBROOT.'DataEntry/file_download.php?pid='.PROJECT_ID."&s=&record=$record&event_id=$event_id&instance=$instance&field_name=$fieldName&id=$val&doc_id_hash=".Files::docIdHash($val);
-	}
-		$fileDlBtn = "<button class='btn btn-defaultrc btn-xs' style='font-size:8pt;' onclick=\"window.open('$downloadDocUrl','_blank');return false;\">{$this->lang['design_121']}</button>";
+        protected function makeFileDisplay($val, $record, $event_id, $instance, $fieldName) {
+                if ($this->isSurvey) {
+                        $surveyHash = REDCap::filterHtml($_GET['s']);
+                        $downloadDocUrl = APP_PATH_SURVEY . "index.php?pid=".PROJECT_ID."&__passthru=".urlencode("DataEntry/file_download.php")."&doc_id_hash=".Files::docIdHash($val)."&id=$val&s=$surveyHash&record=$record&event_id=$event_id&field_name=$fieldName&instance=$instance";
+                } else {
+                        $downloadDocUrl = APP_PATH_WEBROOT.'DataEntry/file_download.php?pid='.PROJECT_ID."&s=&record=$record&event_id=$event_id&instance=$instance&field_name=$fieldName&id=$val&doc_id_hash=".Files::docIdHash($val);
+                }
+                $fileDlBtn = "<button class='btn btn-defaultrc btn-xs' style='font-size:8pt;' onclick=\"window.open('$downloadDocUrl','_blank');return false;\">{$this->lang['design_121']}</button>";
                 return str_replace('removed=','onclick=',REDCap::filterHtml($fileDlBtn));
         }
 
@@ -882,7 +860,7 @@ var <?php echo self::MODULE_VARNAME;?> = (function(window, document, $, app_path
          * - Augment the action_tag_explain content on project Design pages by adding some additional tr following the last built-in action tag.
          * @param type $project_id
          */
-         public function redcap_every_page_before_render($project_id) {
+      public function redcap_every_page_before_render($project_id) {
                 if (isset($_POST['extmod_closerec_home'])) {
                         $_SESSION['extmod_closerec_home'] = $_POST['extmod_closerec_home'];
 
