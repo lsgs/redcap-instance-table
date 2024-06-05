@@ -383,8 +383,22 @@ class InstanceTable extends AbstractExternalModule
                                 foreach ($instanceData as $rowValues) {
                                         $html.='<tr>';
                                         foreach ($rowValues as $value) {
-                                                $value = str_replace('removed="window.open(','onclick="window.open(',REDCap::filterHtml($value)); // <button removed="window.open( ... >Download</button> file downloads
-                                                $html.="<td>$value</td>";
+                                                $value = $this->escape($value);
+                                                if (is_array($value)) {
+                                                    $sort = (array_key_exists('sort',$value)) ? " data-sort='{$value['sort']}" : '';
+                                                    $filter = (array_key_exists('filter',$value)) ? " data-filter='{$value['filter']}" : '';
+                                                    if (array_key_exists('display',$value)) {
+                                                        $display = $value['display'];
+                                                    } else if (array_key_exists('_',$value)) {
+                                                        $display = $value['_'];
+                                                    } else {
+                                                        $display = $value($value[array_key_first($value)]);
+                                                    }
+                                                    $html.="<td $sort $filter>$display</td>";
+                                                } else {
+                                                    $value = str_replace('removed="window.open(','onclick="window.open(',REDCap::filterHtml($value)); // <button removed="window.open( ... >Download</button> file downloads
+                                                    $html.="<td>$value</td>";
+                                                }
                                         }
                                         $html.='</tr>';
                                 }
@@ -559,6 +573,7 @@ class InstanceTable extends AbstractExternalModule
 
         protected function makeTextDisplay($val, $repeatingFormFields, $fieldName) {
                 if (trim($val)=='') { return ''; }
+                $val = REDCap::filterHtml($val);
                 $valType = $repeatingFormFields[$fieldName]['text_validation_type_or_show_slider_number'];
                 switch ($valType) {
                     case 'date_mdy':
@@ -567,8 +582,8 @@ class InstanceTable extends AbstractExternalModule
                     case 'datetime_dmy':
                     case 'datetime_seconds_mdy':
                     case 'datetime_seconds_dmy':
-                        $outVal = DateTimeRC::datetimeConvert($val, 'ymd', substr($valType, -3)); // reformat raw ymd date/datetime value to mdy or dmy, if appropriate
-                        $outVal = $val; // stick with standard ymd format for better sorting
+                        $displayVal = DateTimeRC::datetimeConvert($val, 'ymd', substr($valType, -3)); // reformat raw ymd date/datetime value to mdy or dmy, if appropriate
+                        $outVal = array('_'=>$val, 'sort'=>$val, 'filter'=>$displayVal, 'display'=>$displayVal);
                         break;
                     case 'email':
                         $outVal = "<a href='mailto:$val'>$val</a>";
@@ -577,7 +592,7 @@ class InstanceTable extends AbstractExternalModule
                         $outVal = $val;
                         break;
                 }
-                return REDCap::filterHtml($outVal);
+                return $outVal;
         }
 
         protected function makeFileDisplay($val, $record, $event_id, $instance, $fieldName) {
@@ -643,7 +658,19 @@ var <?php echo self::MODULE_VARNAME;?> = (function(window, document, $, app_path
                     .DataTable( {
                         "stateSave": true,
                         "stateDuration": 0,
-                        "lengthMenu": [lengthVal, lengthLbl]
+                        "lengthMenu": [lengthVal, lengthLbl],
+                        "columnDefs": [{
+                            "render": function (data, type, row) {
+                                let val = data;
+                                if ($.isPlainObject(data)) {
+                                    if (data.hasOwnProperty(type)) { // e.g. sort, filter for dates
+                                        val = data[type];
+                                    }
+                                }
+                                return val;
+                            },
+                            "targets": "_all"
+                        }]
                     } );
             if (!taggedField.show_instance_col) {
                 thisTbl.column( 0 ).visible( false );
@@ -857,7 +884,6 @@ var <?php echo self::MODULE_VARNAME;?> = (function(window, document, $, app_path
          * redcap_every_page_before_render
          * - When doing Save & Exit or Delete Instance from popup then persist a flag on the session so can close popup on record home page.
          * - If adding a new instance, read the current max instance and redirect to a form with instance value current + 1
-         * - Augment the action_tag_explain content on project Design pages by adding some additional tr following the last built-in action tag.
          * @param type $project_id
          */
       public function redcap_every_page_before_render($project_id) {
