@@ -35,7 +35,7 @@ If project is longitudinal, use `@INSTANCETABLE=event_name:form_name` to specify
 
 ## Example 
 This example shows (on the right-hand side) a form containing three descriptive text fields utilising the `@INSTANCETABLE` action tag. 
-* The first is tagged `@INSTANCETABLE=nonschedule_arm_1:contact_log` and hennce displays a table of data from the "Contact Log" form in the "Nonschedule" event".
+* The first is tagged `@INSTANCETABLE=nonschedule_arm_1:contact_log` and hence displays a table of data from the "Contact Log" form in the "Nonschedule" event".
 * The second is tagged `@INSTANCETABLE=unscheduled_arm_1:visit_data_page_1` and hence displays a table of data from the "Visit Data Page 1" form from the repeating "Unscheduled event.
 * The third is tagged `@INSTANCETABLE=unscheduled_arm_1:visit_data_page_2` and hence displays a table of data from the "Visit Data Page 2" form from the repeating "Unscheduled event.
 
