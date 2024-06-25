@@ -28,6 +28,7 @@ class InstanceTable extends AbstractExternalModule
         protected $group_id;
         protected $repeat_instance;
         protected $defaultValueForNewPopup;
+	protected $pageSize;
 
         const ACTION_TAG = '@INSTANCETABLE';
         const ACTION_TAG_HIDE_FIELD = '@INSTANCETABLE_HIDE';
@@ -202,8 +203,10 @@ class InstanceTable extends AbstractExternalModule
                                             $pageSize = -1;
                                         }
                                         $repeatingFormDetails['page_size'] = $pageSize;
+					 $this->pageSize = $pageSize;
                                 } else {
                                         $repeatingFormDetails['page_size'] = 0;
+					 $this->pageSize = 10;
                                 }
 
                                 // pick up option for additional filter expression
@@ -619,6 +622,7 @@ class InstanceTable extends AbstractExternalModule
         
         protected function insertJS() {
                 global $lang;
+		 $tablePageLength = $this->getTablePageLengthList(); 
                 ?>
 <style type="text/css">
     .<?php echo self::MODULE_VARNAME;?> tbody tr { font-weight:normal; }
@@ -633,65 +637,74 @@ var <?php echo self::MODULE_VARNAME;?> = (function(window, document, $, app_path
     var langYes = '<?php echo js_escape($this->lang['design_100']);?>';
     var langNo = '<?php echo js_escape($this->lang['design_99']);?>';
     var config = <?php echo json_encode($this->taggedFields, JSON_PRETTY_PRINT);?>;
+    var tablePageLength = <?php echo $this->pageSize; ?>;
+    var tableLengthMenu = <?php echo json_encode($tablePageLength); ?>;	
     var taggedFieldNames = [];
     var lengthVal;
     var lengthLbl;
 
     function init() {
-        config.forEach(function(taggedField) {
-            taggedFieldNames.push(taggedField.field_name);
-            $('#'+taggedField.field_name+'-tr td:last')
-                    .append(taggedField.markup);
-            switch(taggedField.page_size) {
-                case 0:
-                    lengthVal = [10, 25, 50, 100, -1];
-                    lengthLbl = [10, 25, 50, 100, "<?=$lang['docs_44']?>"]; // "ALL"
-                    break;
-                case -1:
-                    lengthVal = [-1];
-                    lengthLbl = ["<?=$lang['docs_44']?>"]; // "ALL"
-                    break;
-                default:
-                    lengthVal = lengthLbl = [taggedField.page_size];
-            } 
-            var thisTbl = $('#'+taggedField.html_table_id)
-                    .DataTable( {
-                        "stateSave": true,
-                        "stateDuration": 0,
-                        "lengthMenu": [lengthVal, lengthLbl],
-                        "columnDefs": [{
-                            "render": function (data, type, row) {
-                                let val = data;
-                                if ($.isPlainObject(data)) {
-                                    if (data.hasOwnProperty(type)) { // e.g. sort, filter for dates
-                                        val = data[type];
-                                    }
-                                }
-                                return val;
-                            },
-                            "targets": "_all"
-                        }]
-                    } );
-            if (!taggedField.show_instance_col) {
-                thisTbl.column( 0 ).visible( false );
-            }
-            if (!isSurvey) {
-                thisTbl.ajax.url(taggedField.ajax_url).load();
-            }
+    config.forEach(function(taggedField) {
+        taggedFieldNames.push(taggedField.field_name);
+        $('#'+taggedField.field_name+'-tr td:last').append(taggedField.markup);
+        // Define lengthArray based on taggedField or set default values
+        var lengthArray = taggedField.lengthArray || [10, 25, 50, 100, -1];
+        var lengthLbl = lengthArray.map(function(length) {
+            return length === -1 ? "<?=$lang['docs_44']?>" : length;
         });
 
-        // override global function doGreenHighlight() so we can skip the descriptive text fields with tables
-        var globalDoGreenHighlight = doGreenHighlight;
-        doGreenHighlight = function(rowob) {
-            if ( $.inArray(rowob.attr('sq_id'), taggedFieldNames) === -1) {
-                globalDoGreenHighlight(rowob);
-            }
-        };
-    }
+        var thisTbl = $('#'+taggedField.html_table_id).DataTable({
+            "stateSave": true,
+            "stateDuration": 0,
+            "pageLength": tablePageLength,
+        //     "lengthMenu": [lengthArray, lengthLbl],
+            "lengthMenu": tableLengthMenu,
+            "columnDefs": [{
+                "render": function (data, type, row) {
+                    let val = data;
+                    if ($.isPlainObject(data)) {
+                        if (data.hasOwnProperty(type)) { // e.g. sort, filter for dates
+                            val = data[type];
+                        }
+                    }
+                    return val;
+                },
+                "targets": "_all"
+            }]
+        });
 
-    $(document).ready(function() {
-        init();
+        if (!taggedField.show_instance_col) {
+            thisTbl.column(0).visible(false);
+        }
+        if (!isSurvey) {
+            thisTbl.ajax.url(taggedField.ajax_url).load();
+        }
+        updatePageLength(taggedField, tablePageLength, tableLengthMenu);
     });
+
+    // Override global function doGreenHighlight() to skip descriptive text fields with tables
+    var globalDoGreenHighlight = doGreenHighlight;
+    doGreenHighlight = function(rowob) {
+        if ($.inArray(rowob.attr('sq_id'), taggedFieldNames) === -1) {
+            globalDoGreenHighlight(rowob);
+        }
+    };
+}
+
+// Function to dynamically update page length and length menu
+function updatePageLength(taggedField, newPageLength, newLengthMenu) {
+    var thisTbl = $('#'+taggedField.html_table_id).DataTable();
+    // Update the DataTable settings
+    thisTbl.page.len(newPageLength).draw();
+    thisTbl.settings()[0].aLengthMenu = newLengthMenu;
+    // Redraw the length menu
+    thisTbl.draw(false);
+}
+
+$(document).ready(function() {
+    init();
+});
+
 
     function instancePopup(title, record, event, form, instance) {
         var url = app_path_webroot+'DataEntry/index.php?pid='+pid+'&id='+record+'&event_id='+event+'&page='+form+'&instance='+instance+'&extmod_instance_table=1';
@@ -910,5 +923,21 @@ var <?php echo self::MODULE_VARNAME;?> = (function(window, document, $, app_path
                                 $_GET['instance'] = 1;
                         }
                 } 
+        }
+	public function getTablePageLengthList(){
+                $list = [10, 25, 50, 100];
+                sort($list);
+                if (in_array($this->pageSize, $list)) {
+                    return $list;
+                }
+                $position = 0;
+                foreach ($list as $index => $value) {
+                    if ($this->pageSize < $value) {
+                        break;
+                    }
+                    $position = $index + 1;
+                }
+                array_splice($list, $position, 0, $this->pageSize);
+                return $list;
         }
 }
