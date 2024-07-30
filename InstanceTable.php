@@ -91,7 +91,19 @@ class InstanceTable extends AbstractExternalModule
                 $this->initHook($record, $instrument, $event_id, true, $group_id, $repeat_instance);
                 $this->pageTop();
         }
-        
+
+        public function redcap_module_ajax($action, $payload, $project_id, $record, $instrument, $event_id, $repeat_instance, $survey_hash, $response_id, $survey_queue_hash, $page, $page_full, $user_id, $group_id) {
+            if ($action == "get-data") {
+                $event = intval($payload["event_id"]);
+                $form = $this->framework->escape($payload["form_name"]);
+                $fields = $this->framework->escape($payload["fields"]);
+                $filter = $payload["filter"];
+                $hideChoiceValues = ($payload["hide_vals"]=='1');
+                $data = $this->getInstanceData($record, $event, $form, $fields, $filter, true, $hideChoiceValues);
+                return $data;
+            }
+        }
+
         protected function initHook($record, $instrument, $event_id, $isSurvey, $group_id, $repeat_instance) {
             global $Proj, $lang, $user_rights;
             $this->Proj = $Proj;
@@ -246,9 +258,6 @@ class InstanceTable extends AbstractExternalModule
                                 reset($includeVars);
                                 $repeatingFormDetails['var_list'] = $includeVars;
 
-                                $ajaxUrl = $this->getUrl('instance_table_ajax.php');
-                                $filter = htmlspecialchars(str_replace("'",self::REPLQUOTE_SINGLE,str_replace('"',self::REPLQUOTE_DOUBLE,$filter)), ENT_QUOTES);
-
                                 if (preg_match("/".self::ACTION_TAG_SCROLLX."/", $fieldDetails['field_annotation'])) {
                                         $repeatingFormDetails['scroll_x'] = true;
                                 } else {
@@ -276,7 +285,12 @@ class InstanceTable extends AbstractExternalModule
                                     $repeatingFormDetails['hide_choice_values'] = false;
                                 }
 
-                                $repeatingFormDetails['ajax_url'] = $ajaxUrl."$hideVals&record={$this->record}&event_id=$eventId&form_name=$formName&filter=$filter&fields=".implode('|',$includeVars);
+                                $repeatingFormDetails["ajax"] = [
+                                    "event_id" => $eventId,
+                                    "form_name" => $formName,
+                                    "filter" => $filter,
+                                    "fields" => $includeVars
+                                ];
                                 $repeatingFormDetails['markup'] = '';
 
                                 $this->taggedFields[] = $repeatingFormDetails;
@@ -420,7 +434,6 @@ class InstanceTable extends AbstractExternalModule
                 $this->user_rights = &$user_rights;
                 $this->isSurvey = (PAGE==='surveys/index.php');
                 $instanceData = array();
-                $filter = str_replace(self::REPLQUOTE_SINGLE,"'",str_replace(self::REPLQUOTE_DOUBLE,'"',$filter));
 	
                 // find any descriptive text fields tagged with @FORMINSTANCETABLE=form_name
                 
@@ -615,6 +628,8 @@ class InstanceTable extends AbstractExternalModule
         
         protected function insertJS() {
                 global $lang;
+                $this->framework->initializeJavascriptModuleObject();
+                $jsmo_name = $this->framework->getJavascriptModuleObjectName();
                 ?>
 <style type="text/css">
     .<?php echo self::MODULE_VARNAME;?> tbody tr { font-weight:normal; }
@@ -633,6 +648,7 @@ var <?php echo self::MODULE_VARNAME;?> = (function(window, document, $, app_path
     var lengthVal;
     var lengthLbl;
     var lengthChange;
+    var JSMO = <?=$jsmo_name?>;
 
     function init() {
         config.forEach(function(taggedField) {
@@ -654,7 +670,9 @@ var <?php echo self::MODULE_VARNAME;?> = (function(window, document, $, app_path
                     lengthVal = lengthLbl = [taggedField.page_size];
                     lengthChange = false;
             } 
-            var thisTbl = $('#'+taggedField.html_table_id)
+            var thisTbl;
+            if (isSurvey) {
+                thisTbl = $('#'+taggedField.html_table_id)
                     .DataTable( {
                         "stateSave": true,
                         "stateDuration": 0,
@@ -673,11 +691,37 @@ var <?php echo self::MODULE_VARNAME;?> = (function(window, document, $, app_path
                             "targets": "_all"
                         }]
                     } );
-            if (!taggedField.show_instance_col) {
-                thisTbl.column( 0 ).visible( false );
+                if (!taggedField.show_instance_col) {
+                    thisTbl.column( 0 ).visible( false );
+                }
             }
-            if (!isSurvey) {
-                thisTbl.ajax.url(taggedField.ajax_url).load();
+            else {
+                JSMO.ajax('get-data', taggedField.ajax).then(function(data) {
+                    thisTbl = $('#'+taggedField.html_table_id)
+                        .DataTable( {
+                            "stateSave": true,
+                            "stateDuration": 0,
+                            "lengthMenu": [lengthVal, lengthLbl],
+                            "lengthChange": lengthChange,
+                            "columnDefs": [{
+                                "render": function (data, type, row) {
+                                    let val = data;
+                                    if ($.isPlainObject(data)) {
+                                        if (data.hasOwnProperty(type)) { // e.g. sort, filter for dates
+                                            val = data[type];
+                                        }
+                                    }
+                                    return val;
+                                },
+                                "targets": "_all"
+                            }],
+                            "data": data
+                        } );
+                    if (!taggedField.show_instance_col) {
+                        thisTbl.column( 0 ).visible( false );
+                    }
+                });
+                // thisTbl.ajax.url(taggedField.ajax_url).load();
             }
         });
 
