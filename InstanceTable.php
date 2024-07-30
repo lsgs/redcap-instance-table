@@ -93,6 +93,7 @@ class InstanceTable extends AbstractExternalModule
         }
 
         public function redcap_module_ajax($action, $payload, $project_id, $record, $instrument, $event_id, $repeat_instance, $survey_hash, $response_id, $survey_queue_hash, $page, $page_full, $user_id, $group_id) {
+            $this->initHook($record, $instrument, $event_id, false, $group_id, $repeat_instance);
             if ($action == "get-data") {
                 $event = intval($payload["event_id"]);
                 $form = $this->framework->escape($payload["form_name"]);
@@ -651,6 +652,7 @@ var <?php echo self::MODULE_VARNAME;?> = (function(window, document, $, app_path
     var JSMO = <?=$jsmo_name?>;
 
     function init() {
+        console.log('Instance Table', config);
         config.forEach(function(taggedField) {
             taggedFieldNames.push(taggedField.field_name);
             $('#'+taggedField.field_name+'-tr td:last')
@@ -721,7 +723,6 @@ var <?php echo self::MODULE_VARNAME;?> = (function(window, document, $, app_path
                         thisTbl.column( 0 ).visible( false );
                     }
                 });
-                // thisTbl.ajax.url(taggedField.ajax_url).load();
             }
         });
 
@@ -758,11 +759,14 @@ var <?php echo self::MODULE_VARNAME;?> = (function(window, document, $, app_path
             ,function() {
                 // refresh all instance tables (e.g. to pick up changes to multiple forms across repeating event
                 $('.'+tableClass).each(function() {
-                    $(this).DataTable().ajax.reload( null, false ); // don't reset user paging on reload
+                    performTableRefresh(this);
+                    // $(this).DataTable().ajax.reload( null, false ); // don't reset user paging on reload
                 });
             },langYes
         );
     }
+
+
 
     return {
         addNewInstance: function(record, event, form, linkFld, linkIns) {
@@ -773,6 +777,12 @@ var <?php echo self::MODULE_VARNAME;?> = (function(window, document, $, app_path
         editInstance: function(record, event, form, instance) {
             instancePopup('View instance', record, event, form, instance);
             return false;
+        },
+        getConfig: function() {
+            return config;
+        },
+        getJSMO: function() {
+            return JSMO;
         }
     }
       })(window, document, jQuery, app_path_webroot, pid, simpleDialog);
@@ -787,7 +797,21 @@ var <?php echo self::MODULE_VARNAME;?> = (function(window, document, $, app_path
     function actuallyRefreshTables() {
         var tableClass = '<?php echo self::MODULE_VARNAME;?>';
         $('.'+tableClass).each(function() {
-            $(this).DataTable().ajax.reload( null, false ); // don't reset user paging on reload
+            performTableRefresh(this);
+            // $(this).DataTable().ajax.reload( null, false ); // don't reset user paging on reload
+        });
+    }
+
+    function performTableRefresh(tbl) {
+        var id = tbl.id;
+        var config = <?=self::MODULE_VARNAME?>.getConfig();
+        var jsmo = <?=self::MODULE_VARNAME?>.getJSMO();
+        var it = config.filter(function(x) { return x.html_table_id == id; })[0];
+        jsmo.ajax('get-data', it.ajax).then(function(data) {
+            var dt = $(tbl).DataTable();
+            dt.clear();
+            dt.rows.add(data);
+            dt.draw();
         });
     }
 
