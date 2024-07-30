@@ -12,5 +12,7 @@
 			"name": "REDCap"
 		}
 	],
-	"settings": {}
+	"settings": {
+		"php.suggest.basic": false
+	}
 }
