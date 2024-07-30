@@ -760,7 +760,6 @@ var <?php echo self::MODULE_VARNAME;?> = (function(window, document, $, app_path
                 // refresh all instance tables (e.g. to pick up changes to multiple forms across repeating event
                 $('.'+tableClass).each(function() {
                     performTableRefresh(this);
-                    // $(this).DataTable().ajax.reload( null, false ); // don't reset user paging on reload
                 });
             },langYes
         );
@@ -798,7 +797,6 @@ var <?php echo self::MODULE_VARNAME;?> = (function(window, document, $, app_path
         var tableClass = '<?php echo self::MODULE_VARNAME;?>';
         $('.'+tableClass).each(function() {
             performTableRefresh(this);
-            // $(this).DataTable().ajax.reload( null, false ); // don't reset user paging on reload
         });
     }
 
