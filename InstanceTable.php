@@ -652,7 +652,7 @@ var <?php echo self::MODULE_VARNAME;?> = (function(window, document, $, app_path
     var JSMO = <?=$jsmo_name?>;
 
     function init() {
-        console.log('Instance Table', config);
+        // console.log('Instance Table', config);
         config.forEach(function(taggedField) {
             taggedFieldNames.push(taggedField.field_name);
             $('#'+taggedField.field_name+'-tr td:last')
