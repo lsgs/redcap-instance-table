@@ -195,7 +195,7 @@ class InstanceTable extends AbstractExternalModule
                                         $recordData = REDCap::getData('array', $this->record, $matches[1], $this->event_id, null, false, false, false, null, false); // export raw
                                         $join_val  = $recordData[1]['repeat_instances'][$this->event_id][$this->instrument][$this->repeat_instance][$matches[1]];
                                         if (preg_match("/".self::ACTION_TAG_DST."='?((\w+_arm_\d+[a-z]?:)?\w+)'?\s?/", $fieldDetails['field_annotation'], $matches)) {
-                                               $filter  = "[" . $matches[1] ."]='" .$join_val."'";
+                                               $filter  = $this->escape("[" . $matches[1] ."]='" .$join_val."'");
                                         }
                                 }
 
@@ -891,6 +891,16 @@ var <?php echo self::MODULE_VARNAME;?> = (function(window, document, $, app_path
                 window.opener.refreshTables();
                 dataEntrySubmit(this);
             });
+        $('#submit-btn-savecontinue') // Save & Stay - preserve &extmod_instance_table=1 in url when reload 
+            .attr('name', 'submit-btn-savecontinue')
+            .removeAttr('onclick')
+            .click(function(event) {
+                var redirectUrl = window.location.href.replace('&extmod_instance_table_add_new=1','');
+                event.preventDefault();
+                window.opener.refreshTables();
+                dataEntrySubmit(this);
+                window.setTimeout($.redirectUrl, 500, redirectUrl);
+            });
         $('#submit-btn-savenextinstance')// Save & Next Instance (not necessarily a new instance)
             .attr('name', 'submit-btn-savenextinstance')
             .removeAttr('onclick')
@@ -908,14 +918,14 @@ var <?php echo self::MODULE_VARNAME;?> = (function(window, document, $, app_path
                 window.opener.refreshTables();
                 window.close();
             });
-                    <?php
-                    if ( isset($_GET['extmod_instance_table_add_new'])) {
-                    ?>
-            $('button[name=submit-btn-deleteform]').css("display", "none");
-                    <?php
-                    } else {
-                    ?>
-            $('button[name=submit-btn-deleteform]')
+            <?php
+            if ( isset($_GET['extmod_instance_table_add_new'])) {
+            ?>
+        $('button[name=submit-btn-deleteform]').css("display", "none");
+            <?php
+            } else {
+            ?>
+        $('button[name=submit-btn-deleteform]')
             .removeAttr('onclick')
             .click(function(event) {
                 $('#form').append('<input type="hidden" name="extmod_closerec_home" value="<?=$record?>">');
@@ -932,19 +942,19 @@ var <?php echo self::MODULE_VARNAME;?> = (function(window, document, $, app_path
                 );
                 return false;
             });
-                    <?php
-                    }
-                    if (isset($_GET['__reqmsg'])) {
-                    ?>
-                setTimeout(function() {
+            <?php
+            }
+            if (isset($_GET['__reqmsg'])) {
+            ?>
+            setTimeout(function() {
                     $('div[aria-describedby="reqPopup"]').find('div.ui-dialog-buttonpane').find('button').not(':last').hide(); // .css('visibility', 'visible'); // required fields message show only "OK" button, not ignore & leave
                 }, 100);
-                    <?php
+            <?php
             }
-                    ?>
+            ?>
     });
 </script>
-                <?php
+            <?php
         }
 
         /**
