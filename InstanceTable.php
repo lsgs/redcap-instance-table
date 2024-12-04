@@ -43,6 +43,7 @@ class InstanceTable extends AbstractExternalModule
         const ACTION_TAG_FILTER = '@INSTANCETABLE_FILTER';
         const ACTION_TAG_ADDBTNLABEL = '@INSTANCETABLE_ADDBTNLABEL';
         const ACTION_TAG_HIDECHOICEVALUES = '@INSTANCETABLE_HIDECHOICEVALUES';
+        const ACTION_TAG_HIDEFORMSTATUS = '@INSTANCETABLE_HIDEFORMSTATUS';
         const ADD_NEW_BTN_YSHIFT = '0px';
         const MODULE_VARNAME = 'MCRI_InstanceTable';
 
@@ -99,8 +100,9 @@ class InstanceTable extends AbstractExternalModule
                 $form = $this->framework->escape($payload["form_name"]);
                 $fields = $this->framework->escape($payload["fields"]);
                 $filter = $payload["filter"];
-                $hideChoiceValues = ($payload["hide_vals"]=='1');
-                $data = $this->getInstanceData($record, $event, $form, $fields, $filter, true, $hideChoiceValues);
+                $hideChoiceValues = (bool)$payload["hide_vals"];
+                $hideFormStatus = (bool)$payload["hide_form_status"];
+                $data = $this->getInstanceData($record, $event, $form, $fields, $filter, !$hideFormStatus, $hideChoiceValues);
                 return $data;
             }
         }
@@ -279,18 +281,24 @@ class InstanceTable extends AbstractExternalModule
                                 }
 
                                 if (preg_match("/".self::ACTION_TAG_HIDECHOICEVALUES."/", $fieldDetails['field_annotation'])) {
-                                    $hideVals = '&hide_vals=1';
-                                    $repeatingFormDetails['hide_choice_values'] = true;
+                                    $hideVals = $repeatingFormDetails['hide_choice_values'] = true;
                                 } else {
-                                    $hideVals = '';
-                                    $repeatingFormDetails['hide_choice_values'] = false;
+                                    $hideVals = $repeatingFormDetails['hide_choice_values'] = false;
+                                }
+
+                                if ($this->isSurvey || preg_match("/".self::ACTION_TAG_HIDEFORMSTATUS."/", $fieldDetails['field_annotation'])) {
+                                    $hideStatus = $repeatingFormDetails['hide_form_status'] = true;
+                                } else {
+                                    $hideStatus = $repeatingFormDetails['hide_form_status'] = false;
                                 }
 
                                 $repeatingFormDetails["ajax"] = [
                                     "event_id" => $eventId,
                                     "form_name" => $formName,
                                     "filter" => $filter,
-                                    "fields" => $includeVars
+                                    "fields" => $includeVars,
+                                    'hide_vals' => $hideVals,
+                                    'hide_form_status' => $hideStatus
                                 ];
                                 $repeatingFormDetails['markup'] = '';
 
@@ -364,6 +372,7 @@ class InstanceTable extends AbstractExternalModule
                 $varList = $repeatingFormDetails['var_list'];
                 $btnLabel = ($repeatingFormDetails['button_label']=='') ? $this->lang['data_entry_247'] : $repeatingFormDetails['button_label'];
                 $hideChoiceValues = $repeatingFormDetails['hide_choice_values'];
+                $hideFormStatus = $repeatingFormDetails['hide_form_status'];
 
                 $scrollStyle = ($scrollX) ? "display:block; max-width:790px;" : "";
                 $nColumns = 1; // start at 1 for # (Instance) column
@@ -379,7 +388,7 @@ class InstanceTable extends AbstractExternalModule
                         $html .= "<th>$colHeader</th>";
                         $nColumns++;
                 }
-                if (!$this->isSurvey) {
+                if (!$hideFormStatus) {
                         $html.='<th>Form Status</th>'; // "Form Status" wording is hardcoded in MetaData::save_metadata()
                         $nColumns++;
                 }
@@ -525,15 +534,16 @@ class InstanceTable extends AbstractExternalModule
                 return $instanceData;
         }
         
-        protected function makeOpenPopupAnchor($val, $record, $event, $form, $instance) {
+        protected function makeOpenPopupAnchor($val, $record, $event, $form, $instance, $outline=false) {
                 if ($this->isSurvey) {
                         return $val;
                 }
-                return '<a title="Open instance" href="javascript:;" onclick="'.self::MODULE_VARNAME.'.editInstance(\''.$record.'\','.$event.',\''.$form.'\','.$instance.');">'.$val.'</a>';
+                $class = ($outline) ? 'class="btn btn-xs btn-outline-secondary"' : '';
+                return '<a '.$class.' title="Open instance" href="javascript:;" onclick="'.self::MODULE_VARNAME.'.editInstance(\''.$record.'\','.$event.',\''.$form.'\','.$instance.');">'.$val.'</a>';
         }
         
         protected function makeInstanceNumDisplay($val, $record, $event, $form, $instance) {
-                return $this->makeOpenPopupAnchor($val, $record, $event, $form, $instance);
+                return $this->makeOpenPopupAnchor($val, $record, $event, $form, $instance, true);
         }
         
         protected function makeFormStatusDisplay($val, $record, $event, $form, $instance) {

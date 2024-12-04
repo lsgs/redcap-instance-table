@@ -28,6 +28,7 @@ If project is longitudinal, use `@INSTANCETABLE=event_name:form_name` to specify
 *  `@INSTANCETABLE_FILTER='[v]="1"'`: Specify a logic expression to show only instances that match the filter expression. 
 *  `@INSTANCETABLE_ADDBTNLABEL='Button Label'`: Specify an alternative label for the "Add New" button.
 *  `@INSTANCETABLE_HIDECHOICEVALUES`: Suppress the display of choice field values and show only choice labels.
+*  `@INSTANCETABLE_HIDEFORMSTATUS`: Suppress display of the form status field in data entry view. (The form status field is always suppressed in survey mode.)
 
 ### Tags Used for Fields on a Repeating Form 
 * `@INSTANCETABLE_HIDE`: Ignore this field in instance all tables.

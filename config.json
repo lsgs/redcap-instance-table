@@ -9,10 +9,8 @@
         }
     ],
     "description": "Use the action tag <code>@INSTANCETABLE=form_name</code> in a descriptive text field to include a table showing data from repeat instances of that form.<br>If project is longitudinal, use <code>@INSTANCETABLE=event_name:form_name</code> to specify the event and form (can be a repeating form or a form in a repeating event).<br>Other action tags are available for controlling cetain properties of te tables and their contents.",
-    "framework-version": 14,
-    "auth-ajax-actions": [
-      "get-data"
-    ],
+    "framework-version": 15,
+    "auth-ajax-actions": [ "get-data" ],
     "action-tags": [
         {
             "tag": "@INSTANCETABLE",
@@ -57,6 +55,10 @@
         {
             "tag": "@INSTANCETABLE_HIDECHOICEVALUES",
             "description": "Use <code>@INSTANCETABLE_HIDECHOICEVALUES</code> to suppress the display of choice field values and show only choice labels."
+        },
+        {
+            "tag": "@INSTANCETABLE_HIDEFORMSTATUS",
+            "description": "Use <code>@INSTANCETABLE_HIDEFORMSTATUS</code> to suppress the display of the form status field in data entry view. (The form status field is always suppressed in survey mode.)"
         }
     ],
     "system-settings": [ ],
