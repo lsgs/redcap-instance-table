@@ -15,24 +15,52 @@ If project is longitudinal, use `@INSTANCETABLE=event_name:form_name` to specify
 * Does not show table for users with no read permission to the repeating form.
 * Displays in both regular data entry and survey forms.
 * Survey view is read only with no links to the form instances.
-* Adds an entry for `@INSTANCETABLE` into the Action Tags dialog on Project Setup and Online Designer pages.
+* Adds an entries for `@INSTANCETABLE` and the supplementary tags into the Action Tags dialog on Project Setup and Online Designer pages.
+
+### Note on Instance Tables in Survey Mode
+As noted above, instance tables in survey forms do not contain links to the instances (which may or may not be a survey form), nor an "Add New" button. This behaviour can nevertheless be implemented where desired utilising some HTML, and smart variables.
+
+#### "Add New" Button
+Include an "Add New" button using a descriptive text field containing an HTML button along these lines:
+```
+<a class="btn btn-success text-decoration-none" href="[survey-url:my_repeating_survey][new-instance]"><i class="fas fa-plus"></i> Add New</a>
+```
+#### Links to Edit Specific Survey Instances
+If you wish to provide the buttins that enable access to individual instances of a repeating surveys for editing, then include a `@CALCTEXT` field in your repeating survey that generates the HTML for an "Edit" button. In this example, the instance has an "Edit" button up until it has been completed, at which point the button changes to just a check mark to indicate completion:
+```
+@CALCTEXT( 
+  if(
+    [my_repeating_survey_complete][current-instance]='2', 
+    '<i class="fas fa-check"></i>', 
+    concat( 
+      '<a class="btn btn-primaryrc btn-xs" style="color:#fff" href="', 
+      [survey-url:my_repeating_survey][current-instance], 
+      '"><i class="fas fa-edit mx-1"></i></a>'
+    )
+  )
+)
+```
 
 ## Additional Action Tags
 ### Tags Used Alongside @INSTANCETABLE
-* `@INSTANCETABLE_SCROLLX`: Default behaviour is for a wide table to cause its container to grow. Use this tag to get a horizontal scroll-bar instead.
-* `@INSTANCETABLE_HIDEADD`: Suppress the "Add New" button.
-* `@INSTANCETABLE_PAGESIZE`: Override default choices for page sizing: specify integer default page size, or -1 for "All".
-* `@INSTANCETABLE_HIDEINSTANCECOL`: Hide the "#" column containing instance numbers.
-* `@INSTANCETABLE_VARLIST=rptfrmvar3,rptfrmvar1,rptfrmvar6,rptfrm_complete`: Include only the variables from the repeating form that appear in the comma-separated list. Also (from v1.5.1) can be used to set the order of columns in the table rather than using the order of fields from the form. (An alternative to using `@INSTANCETABLE_HIDE` for repeating form variables. Takes precedence over `@INSTANCETABLE_HIDE`  where both used from v1.5.1.)
-* `@INSTANCETABLE_REF=fieldname`: Where you have an instance table on a repeating form - i.e. is referencing another repeating form - you can have the instances filtered to show only those where the current instance number is saved in a field on the other form.<br>For example, an instance table in a repeating "Visit" form may be configured to show only instances of the repeating "Medication" form where the current Visit instance is selected in the `visitref` field on the Medication form: `@INSTANCETABLE @INSTANCETABLE_REF=visitref`.<br>Note that if you use `@INSTANCETABLE_REF` for an instance table on a non-repeating form the filter will default to `<ref field>=1`.<br>New instances created by clicking the "Add New" button below the instance table will have the current visit instance pre-selected.
-*  `@INSTANCETABLE_FILTER='[v]="1"'`: Specify a logic expression to show only instances that match the filter expression. 
-*  `@INSTANCETABLE_ADDBTNLABEL='Button Label'`: Specify an alternative label for the "Add New" button.
-*  `@INSTANCETABLE_HIDECHOICEVALUES`: Suppress the display of choice field values and show only choice labels.
-*  `@INSTANCETABLE_HIDEFORMSTATUS`: Suppress display of the form status field in data entry view. (The form status field is always suppressed in survey mode.)
+* `@INSTANCETABLE-SCROLLX`: Default behaviour is for a wide table to cause its container to grow. Use this tag to get a horizontal scroll-bar instead.
+* `@INSTANCETABLE-HIDEADD`: Suppress the "Add New" button.
+* `@INSTANCETABLE-PAGESIZE`: Override default choices for page sizing: specify integer default page size, or -1 for "All".
+* `@INSTANCETABLE-HIDEINSTANCECOL`: Hide the "#" column containing instance numbers.
+* `@INSTANCETABLE-VARLIST=rptfrmvar3,rptfrmvar1,rptfrmvar6,rptfrm_complete`: Include only the variables from the repeating form that appear in the comma-separated list. Also (from v1.5.1) can be used to set the order of columns in the table rather than using the order of fields from the form. (An alternative to using `@INSTANCETABLE-HIDE` for repeating form variables. Takes precedence over `@INSTANCETABLE-HIDE`  where both used from v1.5.1.)
+* `@INSTANCETABLE-REF=fieldname`: Where you have an instance table on a repeating form - i.e. is referencing another repeating form - you can have the instances filtered to show only those where the current instance number is saved in a field on the other form.<br>For example, an instance table in a repeating "Visit" form may be configured to show only instances of the repeating "Medication" form where the current Visit instance is selected in the `visitref` field on the Medication form: `@INSTANCETABLE @INSTANCETABLE-REF=visitref`.<br>Note that if you use `@INSTANCETABLE-REF` for an instance table on a non-repeating form the filter will default to `<ref field>=1`.<br>New instances created by clicking the "Add New" button below the instance table will have the current visit instance pre-selected.
+* `@INSTANCETABLE-FILTER='[v]="1"'`: Specify a logic expression to show only instances that match the filter expression. 
+* `@INSTANCETABLE-ADDBTNLABEL='Button Label'`: Specify an alternative label for the "Add New" button.
+* `@INSTANCETABLE-HIDECHOICEVALUES`: Suppress the display of choice field values and show only choice labels.
+* `@INSTANCETABLE-HIDEFORMSTATUS`: Suppress display of the form status field in data entry view. (The form status field is always suppressed in survey mode.)
+* `@INSTANCETABLE-HIDEFORMINMENU`: Hide the link to the repeating form in the Data Collection section of the project page menu.
 
 ### Tags Used for Fields on a Repeating Form 
-* `@INSTANCETABLE_HIDE`: Ignore this field in instance all tables.
-* `@INSTANCETABLE_LABEL='column header'`: Provide an alternative column title for the field in all instance tables.
+* `@INSTANCETABLE-HIDE`: Ignore this field in instance all tables.
+* `@INSTANCETABLE-LABEL='column header'`: Provide an alternative column title for the field in all instance tables.
+
+### Note on Tag Form
+The preferred form of these action tags changed in v1.11.0 of the module from containing `_` to containing `-` to give better rendering in the Online Designer. The change is backward-compatible and either form may be utilised, e.g. either `@INSTANCETABLE-HIDEADD` or `@INSTANCETABLE_HIDEADD` may be used to hide the "Add New button.
 
 ## Example 
 This example shows (on the right-hand side) a form containing three descriptive text fields utilising the `@INSTANCETABLE` action tag. 

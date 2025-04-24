@@ -30,20 +30,21 @@ class InstanceTable extends AbstractExternalModule
         protected $defaultValueForNewPopup;
 
         const ACTION_TAG = '@INSTANCETABLE';
-        const ACTION_TAG_HIDE_FIELD = '@INSTANCETABLE_HIDE';
-        const ACTION_TAG_LABEL = '@INSTANCETABLE_LABEL';
-        const ACTION_TAG_SCROLLX = '@INSTANCETABLE_SCROLLX';
-        const ACTION_TAG_HIDEADDBTN = '@INSTANCETABLE_HIDEADD'; // i.e. hide "Add" button even if user has edit access to form
-        const ACTION_TAG_HIDEINSTANCECOL = '@INSTANCETABLE_HIDEINSTANCECOL'; // i.e. hide the "#" column containing instance numbers
-        const ACTION_TAG_VARLIST = '@INSTANCETABLE_VARLIST'; // provide a comma-separated list of variables to include (not including any tagged HIDE)
-        const ACTION_TAG_PAGESIZE = '@INSTANCETABLE_PAGESIZE'; // Override default choices for page sizing: specify integer default page size, use -1 for All
-        const ACTION_TAG_REF = '@INSTANCETABLE_REF';
-        const ACTION_TAG_SRC = '@INSTANCETABLE_SRC'; // deprecated
-        const ACTION_TAG_DST = '@INSTANCETABLE_DST'; // deprecated
-        const ACTION_TAG_FILTER = '@INSTANCETABLE_FILTER';
-        const ACTION_TAG_ADDBTNLABEL = '@INSTANCETABLE_ADDBTNLABEL';
-        const ACTION_TAG_HIDECHOICEVALUES = '@INSTANCETABLE_HIDECHOICEVALUES';
-        const ACTION_TAG_HIDEFORMSTATUS = '@INSTANCETABLE_HIDEFORMSTATUS';
+        const ACTION_TAG_HIDE_FIELD = '@INSTANCETABLE[-_]HIDE';
+        const ACTION_TAG_LABEL = '@INSTANCETABLE[-_]LABEL';
+        const ACTION_TAG_SCROLLX = '@INSTANCETABLE[-_]SCROLLX';
+        const ACTION_TAG_HIDEADDBTN = '@INSTANCETABLE[-_]HIDEADD'; // i.e. hide "Add" button even if user has edit access to form
+        const ACTION_TAG_HIDEINSTANCECOL = '@INSTANCETABLE[-_]HIDEINSTANCECOL'; // i.e. hide the "#" column containing instance numbers
+        const ACTION_TAG_VARLIST = '@INSTANCETABLE[-_]VARLIST'; // provide a comma-separated list of variables to include (not including any tagged HIDE)
+        const ACTION_TAG_PAGESIZE = '@INSTANCETABLE[-_]PAGESIZE'; // Override default choices for page sizing: specify integer default page size, use -1 for All
+        const ACTION_TAG_REF = '@INSTANCETABLE[-_]REF';
+        const ACTION_TAG_SRC = '@INSTANCETABLE[-_]SRC'; // deprecated
+        const ACTION_TAG_DST = '@INSTANCETABLE[-_]DST'; // deprecated
+        const ACTION_TAG_FILTER = '@INSTANCETABLE[-_]FILTER';
+        const ACTION_TAG_ADDBTNLABEL = '@INSTANCETABLE[-_]ADDBTNLABEL';
+        const ACTION_TAG_HIDECHOICEVALUES = '@INSTANCETABLE[-_]HIDECHOICEVALUES';
+        const ACTION_TAG_HIDEFORMSTATUS = '@INSTANCETABLE[-_]HIDEFORMSTATUS';
+        const ACTION_TAG_HIDEFORMINMENU = '@INSTANCETABLE[-_]HIDEFORMINMENU';
         const ADD_NEW_BTN_YSHIFT = '0px';
         const MODULE_VARNAME = 'MCRI_InstanceTable';
 
@@ -292,6 +293,12 @@ class InstanceTable extends AbstractExternalModule
                                     $hideStatus = $repeatingFormDetails['hide_form_status'] = false;
                                 }
 
+                                if (!$this->isSurvey && preg_match("/".self::ACTION_TAG_HIDEFORMINMENU."/", $fieldDetails['field_annotation'])) {
+                                    $hideStatus = $repeatingFormDetails['hide_form_in_menu'] = true;
+                                } else {
+                                    $hideStatus = $repeatingFormDetails['hide_form_in_menu'] = false;
+                                }
+
                                 $repeatingFormDetails["ajax"] = [
                                     "event_id" => $eventId,
                                     "form_name" => $formName,
@@ -474,6 +481,13 @@ class InstanceTable extends AbstractExternalModule
                 $fields = array_intersect($fields, array_keys($repeatingFormFields));
 
                 if ($includeFormStatus) { $fields[] = $form.'_complete'; }
+
+                if (!empty($filter)) {
+                    // if context for instance table is a repeating form/event then replace any references to fields in this context in the logic expression with their current values
+                    // this prevents [current-instance] being automatically added by LogicTester::preformatLogicEventInstanceSmartVariable()
+                    // and enables the filter to pick up instances of another form with values that match something in the current repeating context
+                    $filter = $this->replaceRepeatingContextValuesInLogicWithValues($filter);                                                
+                }
 
                 $recordData = REDCap::getData('array', $record, $fields, $event, null, false, false, false, $filter, true); // export labels not raw
 
@@ -708,6 +722,10 @@ var <?php echo self::MODULE_VARNAME;?> = (function(window, document, $, app_path
                 }
             }
             else {
+                if (taggedField.hide_form_in_menu) {
+                    $('#data-collection-menu').find('a[id*='+taggedField.form_name+']').parent('div.formMenuList').hide()
+                }
+
                 JSMO.ajax('get-data', taggedField.ajax).then(function(data) {
                     thisTbl = $('#'+taggedField.html_table_id)
                         .DataTable( {
@@ -973,7 +991,7 @@ var <?php echo self::MODULE_VARNAME;?> = (function(window, document, $, app_path
          * - If adding a new instance, read the current max instance and redirect to a form with instance value current + 1
          * @param type $project_id
          */
-      public function redcap_every_page_before_render($project_id) {
+        public function redcap_every_page_before_render($project_id) {
                 if (isset($_POST['extmod_closerec_home'])) {
                         $_SESSION['extmod_closerec_home'] = $_POST['extmod_closerec_home'];
 
@@ -997,5 +1015,56 @@ var <?php echo self::MODULE_VARNAME;?> = (function(window, document, $, app_path
                                 $_GET['instance'] = 1;
                         }
                 } 
+        }
+
+        /**
+         * replaceRepeatingContextValuesInLogicWithValues
+         * if context for instance table is a repeating form/event then replace any references to fields in this context in the logic expression with their current values
+         * this prevents [current-instance] being automatically added by LogicTester::preformatLogicEventInstanceSmartVariable()
+         * and enables the filter to pick up instances of another form with values that match something in the current repeating context
+         * @param string $filter
+         * @return string
+         */
+        protected function replaceRepeatingContextValuesInLogicWithValues(string $filter): string {
+            $inRepeatingEvent = $this->Proj->isRepeatingEvent($this->event_id);
+            $inRepeatingForm = $this->Proj->isRepeatingForm($this->event_id, $this->instrument);
+
+            // if context for instance table is not repeating then leave filter unchanged
+            if (!$inRepeatingEvent && !$inRepeatingForm) return $filter;
+
+            // if filter contains no references to fields in the current repeating event/form context leave filter unchanged
+            $repeatingFields = array();
+            if ($inRepeatingForm) {
+                $rptFormKey = $this->instrument;
+                $repeatingFields = array_keys($this->Proj->forms[$this->instrument]['fields']);
+            } else if ($inRepeatingEvent) {
+                $rptFormKey = '';
+                foreach ($this->Proj->eventsForms[$this->event_id] as $evt => $frm) {
+                    $repeatingFields = array_merge($repeatingFields, array_keys($this->Proj->forms[$this->instrument]['fields']));
+                }
+            }
+
+            $currentEventName = (\REDCap::isLongitudinal()) ? \REDCap::getEventNames(true, false, $this->event_id) : '';
+            $currentContextData = \REDCap::getData('array', $this->record, $repeatingFields, $this->event_id);
+
+            foreach ($repeatingFields as $rf) {
+                if (!str_contains($filter, "[$rf]")) continue; // field not used in logic
+                $currentContextValue = $currentContextData[$this->record]['repeat_instances'][$this->event_id][$rptFormKey][$this->repeat_instance][$rf] ?? '';
+                $replaceValue = ($currentContextValue!=='' && (starts_with($this->Proj->metadata[$rf]['text_validation_type'], 'integer') || starts_with($this->Proj->metadata[$rf]['text_validation_type'], 'number'))) 
+                    ? "$currentContextValue"
+                    : "'$currentContextValue'";
+                
+                $replacePatterns = array();
+                if (\REDCap::isLongitudinal()) {
+                    $replacePatterns[] = "/\[$currentEventName\]\[$rf\](\[current-instance\])?[\s=<>!]/";
+                    $replacePatterns[] = "/\[current-event\]\[$rf\](\[current-instance\])?[\s=<>!]/";
+                } else {
+                    $replacePatterns[] = "/\[$rf\](\[current-instance\])?[\s=<>!]/";
+                }
+
+                $filter = preg_replace($replacePatterns, $replaceValue, $filter);
+            }
+
+            return $filter;
         }
 }
