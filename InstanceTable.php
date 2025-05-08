@@ -697,12 +697,8 @@ var <?php echo self::MODULE_VARNAME;?> = (function(window, document, $, app_path
                     .append(taggedField.markup);
             switch(taggedField.page_size) {
                 case 0:
-                    // lengthVal = [10, 25, 50, 100, -1];
-                    // lengthLbl = [10, 25, 50, 100, "<?=$lang['docs_44']?>"]; // "ALL"
                     lengthVal = [-1, 10, 25, 50, 100];
                     lengthLbl = ["<?=$lang['docs_44']?>", 10, 25, 50, 100]; // "ALL"
-
-
                     lengthChange = true;
                     break;
                 case -1:
