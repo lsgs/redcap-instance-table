@@ -45,7 +45,7 @@ class InstanceTable extends AbstractExternalModule
         const ACTION_TAG_HIDECHOICEVALUES = '@INSTANCETABLE[-_]HIDECHOICEVALUES';
         const ACTION_TAG_HIDEFORMSTATUS = '@INSTANCETABLE[-_]HIDEFORMSTATUS';
         const ACTION_TAG_HIDEFORMINMENU = '@INSTANCETABLE[-_]HIDEFORMINMENU';
-        const ACTION_TAG_ORDER = '@INSTANCETABLE[-_]ORDER'; // Specify custom sort order, e.g. '@INSTANCETABLE_ORDER="2:asc"' for column 2 ascending
+        const ACTION_TAG_ORDER = '@INSTANCETABLE[-_]ORDER'; // Specify custom sort order, e.g. '@INSTANCETABLE_ORDER=2:asc' for column 2 ascending
         const ADD_NEW_BTN_YSHIFT = '0px';
         const MODULE_VARNAME = 'MCRI_InstanceTable';
 
