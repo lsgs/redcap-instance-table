@@ -722,8 +722,6 @@ var <?php echo self::MODULE_VARNAME;?> = (function(window, document, $, app_path
                         "stateDuration": 0,
                         "lengthMenu": [lengthVal, lengthLbl],
                         "lengthChange": lengthChange,
-                        /*order Option: The order option specifies the default sorting for the table. The value [[1, "desc"]] means the second column (index 1) will be sorted in descending order.
-                        Placement: Added the order option in both the if (isSurvey) and else blocks to ensure it applies regardless of whether the table is in survey mode or not. */
                         "order": [[taggedField.order_column, taggedField.order_direction]], // Sort the column (defined in action tag).
                         "columnDefs": [{
                             "render": function (data, type, row) {
