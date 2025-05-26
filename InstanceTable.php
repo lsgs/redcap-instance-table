@@ -45,6 +45,7 @@ class InstanceTable extends AbstractExternalModule
         const ACTION_TAG_HIDECHOICEVALUES = '@INSTANCETABLE[-_]HIDECHOICEVALUES';
         const ACTION_TAG_HIDEFORMSTATUS = '@INSTANCETABLE[-_]HIDEFORMSTATUS';
         const ACTION_TAG_HIDEFORMINMENU = '@INSTANCETABLE[-_]HIDEFORMINMENU';
+        const ACTION_TAG_ORDER = '@INSTANCETABLE[-_]ORDER'; // Specify custom sort order, e.g. '@INSTANCETABLE_ORDER=2:asc' for column 2 ascending
         const ACTION_TAG_PREFILL = '@INSTANCETABLE[-_]PREFILL';
         const ADD_NEW_BTN_YSHIFT = '0px';
         const MODULE_VARNAME = 'MCRI_InstanceTable';
@@ -207,7 +208,7 @@ class InstanceTable extends AbstractExternalModule
                                         $recordData = REDCap::getData('array', $this->record, $matches[1], $this->event_id, null, false, false, false, null, false); // export raw
                                         $join_val  = $recordData[1]['repeat_instances'][$this->event_id][$this->instrument][$this->repeat_instance][$matches[1]];
                                         if (preg_match("/".self::ACTION_TAG_DST."='?((\w+_arm_\d+[a-z]?:)?\w+)'?\s?/", $fieldDetails['field_annotation'], $matches)) {
-                                               $filter  = $this->escape("[" . $matches[1] ."]='" .$join_val."'");
+                                                $filter  = $this->escape("[" . $matches[1] ."]='" .$join_val."'");
                                         }
                                 }
 
@@ -264,7 +265,7 @@ class InstanceTable extends AbstractExternalModule
                                                 // ignore fields tagged @FORMINSTANCETABLE_HIDE - unless requested explicitly in varlist
                                                 $matches = array();
                                                 if (preg_match("/".self::ACTION_TAG_HIDE_FIELD."/", $repeatingFormFields[$fieldName]['field_annotation'])) {
-                                                       unset($includeVars[$idx]);
+                                                        unset($includeVars[$idx]);
                                                 }
                                         }
                                 }
@@ -306,6 +307,19 @@ class InstanceTable extends AbstractExternalModule
                                     $hideStatus = $repeatingFormDetails['hide_form_in_menu'] = true;
                                 } else {
                                     $hideStatus = $repeatingFormDetails['hide_form_in_menu'] = false;
+                                }
+
+                                // pick up option for custom sort order
+                                $matches = array();
+                                if (preg_match("/".self::ACTION_TAG_ORDER."\s*=\s*'?(\d+):(\w+)'?\s?/", $fieldDetails['field_annotation'], $matches)) {
+                                    $orderColumn = intval($matches[1]);
+                                    $orderDirection = strtolower($matches[2]) === 'asc' ? 'asc' : 'desc';
+                                    $repeatingFormDetails['order_column'] = $orderColumn;
+                                    $repeatingFormDetails['order_direction'] = $orderDirection;
+                                } else {
+                                    // Default order
+                                    $repeatingFormDetails['order_column'] = 1;
+                                    $repeatingFormDetails['order_direction'] = 'desc';
                                 }
 
                                 // pick up option for field prefilling in new instances
@@ -716,8 +730,8 @@ var <?php echo self::MODULE_VARNAME;?> = (function(window, document, $, app_path
                     .append(taggedField.markup);
             switch(taggedField.page_size) {
                 case 0:
-                    lengthVal = [10, 25, 50, 100, -1];
-                    lengthLbl = [10, 25, 50, 100, "<?=$lang['docs_44']?>"]; // "ALL"
+                    lengthVal = [-1, 10, 25, 50, 100];
+                    lengthLbl = ["<?=$lang['docs_44']?>", 10, 25, 50, 100]; // "ALL"
                     lengthChange = true;
                     break;
                 case -1:
@@ -737,6 +751,7 @@ var <?php echo self::MODULE_VARNAME;?> = (function(window, document, $, app_path
                         "stateDuration": 0,
                         "lengthMenu": [lengthVal, lengthLbl],
                         "lengthChange": lengthChange,
+                        "order": [[taggedField.order_column, taggedField.order_direction]], // Sort the column (defined in action tag).
                         "columnDefs": [{
                             "render": function (data, type, row) {
                                 let val = data;
@@ -766,6 +781,7 @@ var <?php echo self::MODULE_VARNAME;?> = (function(window, document, $, app_path
                             "stateDuration": 0,
                             "lengthMenu": [lengthVal, lengthLbl],
                             "lengthChange": lengthChange,
+                            "order": [[taggedField.order_column, taggedField.order_direction]],  // Sort the column (defined in action tag).
                             "columnDefs": [{
                                 "render": function (data, type, row) {
                                     let val = data;
@@ -903,9 +919,9 @@ var <?php echo self::MODULE_VARNAME;?> = (function(window, document, $, app_path
             $delFormAlertMsg = ($longitudinal) ? RCView::tt("data_entry_243") : RCView::tt("data_entry_239");
 			if (isset($Proj->forms[$_GET['page']]['survey_id']) && $user_rights['forms'][$_GET['page']] == '3' && isset($_GET['editresp'])) {
 				$delFormAlertMsg .= RCView::div(array('style'=>'margin-top:15px;color:#C00000;'), RCView::tt("data_entry_241"));
-			}
+    }
             $delFormAlertMsg .= RCView::div(array('style'=>'margin-top:15px;color:#C00000;'), RCView::tt_i("data_entry_559", array($_GET['instance'])));
-			$delFormAlertMsg .= RCView::div(array('style'=>'margin-top:15px;color:#C00000;font-weight:bold;'), RCView::tt("data_entry_190"));
+    $delFormAlertMsg .= RCView::div(array('style'=>'margin-top:15px;color:#C00000;font-weight:bold;'), RCView::tt("data_entry_190"));
             $delFormAlertMsg = js_escape($delFormAlertMsg, true);
 
             ?>
