@@ -54,6 +54,7 @@ If you wish to provide the buttins that enable access to individual instances of
 * `@INSTANCETABLE-HIDECHOICEVALUES`: Suppress the display of choice field values and show only choice labels.
 * `@INSTANCETABLE-HIDEFORMSTATUS`: Suppress display of the form status field in data entry view. (The form status field is always suppressed in survey mode.)
 * `@INSTANCETABLE-HIDEFORMINMENU`: Hide the link to the repeating form in the Data Collection section of the project page menu.
+* `@INSTANCETABLE-SORTCOL=n[:direction]`: Specify the column index for the default table sort. The index number should be a positive integer, with <code>1</code> being the first column (i.e. instance number, which is always present even if hidden using `@INSTANCETABLE-HIDEINSTANCECOL`). Direction is optional and can be `asc` (default) or `desc` (case-insensitive) for ascending or descending respectively. The default sort in the absence of this tag is on the first column in ascending order, i.e. `@INSTANCETABLE-SORTCOL=1:asc]`. Note that your browser will remember any custom sorting that you apply, therefore this setting only applies a default sort when you first view an instance table.
 * `@INSTANCETABLE-PREFILL=rptformvar=[pagevar]`: Have fields on new instances pre-filled with data from the current form (or elsewhere on the record) using `fieldname=value` pairs in the URL in a manner similar to survey form field pre-filling. 
 
 ### Tags Used for Fields on a Repeating Form 

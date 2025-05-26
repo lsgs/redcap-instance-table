@@ -65,8 +65,8 @@
             "description": "Use <code>@INSTANCETABLE-HIDEFORMINMENU</code> to hide the link to the repeating form in the Data Collection section of the project page menu."
         },
         {
-            "tag": "@INSTANCETABLE_ORDER",
-            "description": "Use <code>@INSTANCETABLE_ORDER</code> to hide the link to the repeating form in the Project Setup section of the project page menu. i.e.<code>@INSTANCETABLE_ORDER=3:desc</code> to sort the table by the third column in descending order. The direction can be 'asc' or 'desc' (case-insensitive).If the action tag is not provided, it will default to sorting by column 1 in descending order"
+            "tag": "@INSTANCETABLE-SORTCOL",
+            "description": "Use <code>@INSTANCETABLE-SORTCOL=n:direction</code> to specify the column index for the default table sort. The index number should be a positive integer, with <code>1</code> being the first column (usually the instance number). Direction is optional and can be <code>asc</code> (default) or <code>desc</code> (case-insensitive) for ascending or descending respectively. The default sort in the absence of this tag is on the first column in ascending order, i.e. <code>@INSTANCETABLE-SORTCOL=1:asc]</code>"
         },
         {
             "tag": "@INSTANCETABLE-PREFILL",

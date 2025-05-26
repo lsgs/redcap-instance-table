@@ -45,7 +45,7 @@ class InstanceTable extends AbstractExternalModule
         const ACTION_TAG_HIDECHOICEVALUES = '@INSTANCETABLE[-_]HIDECHOICEVALUES';
         const ACTION_TAG_HIDEFORMSTATUS = '@INSTANCETABLE[-_]HIDEFORMSTATUS';
         const ACTION_TAG_HIDEFORMINMENU = '@INSTANCETABLE[-_]HIDEFORMINMENU';
-        const ACTION_TAG_ORDER = '@INSTANCETABLE[-_]ORDER'; // Specify custom sort order, e.g. '@INSTANCETABLE_ORDER=2:asc' for column 2 ascending
+        const ACTION_TAG_SORTCOL = '@INSTANCETABLE[-_]SORTCOL'; // Specify custom sort order, e.g. '@INSTANCETABLE_ORDER=2:asc' for column 2 ascending
         const ACTION_TAG_PREFILL = '@INSTANCETABLE[-_]PREFILL';
         const ADD_NEW_BTN_YSHIFT = '0px';
         const MODULE_VARNAME = 'MCRI_InstanceTable';
@@ -311,15 +311,14 @@ class InstanceTable extends AbstractExternalModule
 
                                 // pick up option for custom sort order
                                 $matches = array();
-                                if (preg_match("/".self::ACTION_TAG_ORDER."\s*=\s*'?(\d+):(\w+)'?\s?/", $fieldDetails['field_annotation'], $matches)) {
-                                    $orderColumn = intval($matches[1]);
-                                    $orderDirection = strtolower($matches[2]) === 'asc' ? 'asc' : 'desc';
-                                    $repeatingFormDetails['order_column'] = $orderColumn;
-                                    $repeatingFormDetails['order_direction'] = $orderDirection;
+                                if (preg_match("/".self::ACTION_TAG_SORTCOL."\s*=\s*[\"']?(\d+)(:asc|:desc)?[\"']?\s?/i", $fieldDetails['field_annotation'], $matches)) {
+                                    $sortColumn = intval($matches[1]);
+                                    $sortDirection = (array_key_exists(2, $matches)) ? strtolower($matches[2]) : null;
+                                    $repeatingFormDetails['sort_column'] = ($sortColumn>1) ? $sortColumn-1 : 0; // use 1-based indexing in config, DT uses 0-based indexes for column refs
+                                    $repeatingFormDetails['sort_direction'] = ($sortDirection==':desc') ? 'desc' : 'asc';
                                 } else {
-                                    // Default order
-                                    $repeatingFormDetails['order_column'] = 1;
-                                    $repeatingFormDetails['order_direction'] = 'desc';
+                                    $repeatingFormDetails['sort_column'] = 1;
+                                    $repeatingFormDetails['sort_direction'] = 'asc';
                                 }
 
                                 // pick up option for field prefilling in new instances
@@ -717,9 +716,6 @@ var <?php echo self::MODULE_VARNAME;?> = (function(window, document, $, app_path
     var langNo = '<?php echo js_escape($this->lang['design_99']);?>';
     var config = <?php echo json_encode($this->taggedFields, JSON_PRETTY_PRINT);?>;
     var taggedFieldNames = [];
-    var lengthVal;
-    var lengthLbl;
-    var lengthChange;
     var JSMO = <?=$jsmo_name?>;
 
     function init() {
@@ -730,18 +726,18 @@ var <?php echo self::MODULE_VARNAME;?> = (function(window, document, $, app_path
                     .append(taggedField.markup);
             switch(taggedField.page_size) {
                 case 0:
-                    lengthVal = [-1, 10, 25, 50, 100];
-                    lengthLbl = ["<?=$lang['docs_44']?>", 10, 25, 50, 100]; // "ALL"
-                    lengthChange = true;
+                    taggedField.lengthVal = [10, 25, 50, 100, -1];
+                    taggedField.lengthLbl = [10, 25, 50, 100, "<?=$lang['docs_44']?>"]; // "ALL"
+                    taggedField.lengthChange = true;
                     break;
                 case -1:
-                    lengthVal = [-1];
-                    lengthLbl = ["<?=$lang['docs_44']?>"]; // "ALL"
-                    lengthChange = false;
+                    taggedField.lengthVal = [-1];
+                    taggedField.lengthLbl = ["<?=$lang['docs_44']?>"]; // "ALL"
+                    taggedField.lengthChange = false;
                     break;
                 default:
-                    lengthVal = lengthLbl = [taggedField.page_size];
-                    lengthChange = false;
+                    taggedField.lengthVal = lengthLbl = [taggedField.page_size];
+                    taggedField.lengthChange = false;
             } 
             var thisTbl;
             if (isSurvey) {
@@ -749,9 +745,9 @@ var <?php echo self::MODULE_VARNAME;?> = (function(window, document, $, app_path
                     .DataTable( {
                         "stateSave": true,
                         "stateDuration": 0,
-                        "lengthMenu": [lengthVal, lengthLbl],
-                        "lengthChange": lengthChange,
-                        "order": [[taggedField.order_column, taggedField.order_direction]], // Sort the column (defined in action tag).
+                        "lengthMenu": [taggedField.lengthVal, taggedField.lengthLbl],
+                        "lengthChange": taggedField.lengthChange,
+                        "order": [[taggedField.sort_column, taggedField.sort_direction]],
                         "columnDefs": [{
                             "render": function (data, type, row) {
                                 let val = data;
@@ -768,6 +764,9 @@ var <?php echo self::MODULE_VARNAME;?> = (function(window, document, $, app_path
                 if (!taggedField.show_instance_col) {
                     thisTbl.column( 0 ).visible( false );
                 }
+                if (taggedField.page_size!==0) {
+                    thisTbl.page.len(taggedField.page_size).draw();
+                }
             }
             else {
                 if (taggedField.hide_form_in_menu) {
@@ -779,9 +778,9 @@ var <?php echo self::MODULE_VARNAME;?> = (function(window, document, $, app_path
                         .DataTable( {
                             "stateSave": true,
                             "stateDuration": 0,
-                            "lengthMenu": [lengthVal, lengthLbl],
-                            "lengthChange": lengthChange,
-                            "order": [[taggedField.order_column, taggedField.order_direction]],  // Sort the column (defined in action tag).
+                            "lengthMenu": [taggedField.lengthVal, taggedField.lengthLbl],
+                            "lengthChange": taggedField.lengthChange,
+                            "order": [[taggedField.sort_column, taggedField.sort_direction]],
                             "columnDefs": [{
                                 "render": function (data, type, row) {
                                     let val = data;
@@ -798,6 +797,9 @@ var <?php echo self::MODULE_VARNAME;?> = (function(window, document, $, app_path
                         } );
                     if (!taggedField.show_instance_col) {
                         thisTbl.column( 0 ).visible( false );
+                    }
+                    if (taggedField.page_size!==0) {
+                        thisTbl.page.len(taggedField.page_size).draw();
                     }
                 });
             }
