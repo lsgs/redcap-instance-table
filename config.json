@@ -63,6 +63,10 @@
         {
             "tag": "@INSTANCETABLE-HIDEFORMINMENU",
             "description": "Use <code>@INSTANCETABLE-HIDEFORMINMENU</code> to hide the link to the repeating form in the Data Collection section of the project page menu."
+        },
+        {
+            "tag": "@INSTANCETABLE-PREFILL",
+            "description": "Use <code>@INSTANCETABLE-PREFILL=rptformvar=[pagevar]</code> to have fields on new instances pre-filled with data from the current form (or elsewhere on the record) using `fieldname=value` pairs in the URL in a manner similar to survey form field pre-filling. Note: the data entry form field pre-filling capability is not limited to fields referenced in the tag, but is enabled for all fields and forms project-wide."
         }
     ],
     "system-settings": [ ],
