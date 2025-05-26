@@ -67,6 +67,10 @@
         {
             "tag": "@INSTANCETABLE_ORDER",
             "description": "Use <code>@INSTANCETABLE_ORDER</code> to hide the link to the repeating form in the Project Setup section of the project page menu. i.e.<code>@INSTANCETABLE_ORDER=3:desc</code> to sort the table by the third column in descending order. The direction can be 'asc' or 'desc' (case-insensitive).If the action tag is not provided, it will default to sorting by column 1 in descending order"
+        },
+        {
+            "tag": "@INSTANCETABLE-PREFILL",
+            "description": "Use <code>@INSTANCETABLE-PREFILL='repeatingformfield=value'</code> to have fields on new instances pre-filled with the specified value using `fieldname=value` pairs in the URL in a manner similar to survey form field pre-filling. Notes: <ol><li>If the tag parameter contains piping expressions then values will be piped live - the form containing the instance table need not be saved.</li><li>Multiple fields can be pre-filled either by specifying multiple <code>@INSTANCETABLE-PREFILL</code> tags or by specifying a query string-form argument, e.g. <code>@INSTANCETABLE-PREFILL='v1=1&v2=2'</code>.</li><li>The data entry form field pre-filling capability is not limited to fields referenced in the tag, but is enabled for <em>all fields and forms project-wide</em>.</li></ol>"
         }
     ],
     "system-settings": [ ],

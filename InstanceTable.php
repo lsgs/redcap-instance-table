@@ -46,6 +46,7 @@ class InstanceTable extends AbstractExternalModule
         const ACTION_TAG_HIDEFORMSTATUS = '@INSTANCETABLE[-_]HIDEFORMSTATUS';
         const ACTION_TAG_HIDEFORMINMENU = '@INSTANCETABLE[-_]HIDEFORMINMENU';
         const ACTION_TAG_ORDER = '@INSTANCETABLE[-_]ORDER'; // Specify custom sort order, e.g. '@INSTANCETABLE_ORDER=2:asc' for column 2 ascending
+        const ACTION_TAG_PREFILL = '@INSTANCETABLE[-_]PREFILL';
         const ADD_NEW_BTN_YSHIFT = '0px';
         const MODULE_VARNAME = 'MCRI_InstanceTable';
 
@@ -66,9 +67,10 @@ class InstanceTable extends AbstractExternalModule
         }
 
         /**
-         * redcap_every_page_before_render
-         * When doing Save & Exit or Delete Instance from popup then persist a flag on the session.
-         * If Record Home page is loading when this flag is present then window.close() 
+         * redcap_every_page_top
+         * - When doing Save & Exit or Delete Instance from popup then persist a flag on the session.
+         *   If Record Home page is loading when this flag is present then window.close() 
+         * - Field prefilling on DE forms - detect fieldname=? in $_GET (note this mechanism is NOT limited to the popup)
          * @param type $project_id
          */
         public function redcap_every_page_top($project_id) {
@@ -77,6 +79,13 @@ class InstanceTable extends AbstractExternalModule
                         <script type="text/javascript">/* EM Instance Table */ window.close();</script>
                         <?php
                         unset($_SESSION['extmod_closerec_home']);
+                } else if (PAGE==='DataEntry/index.php' && isset($_GET['id']) && isset($_GET['page'])) {
+                        global $Proj;
+                        foreach (array_keys($Proj->forms[$this->escape($_GET['page'])]['fields']) as $formField) {
+                                if (isset($_GET[$formField]) && $_GET[$formField]!='') {
+                                        $Proj->metadata[$formField]['misc'] .= " @DEFAULT='".$this->escape($_GET[$formField])."'";
+                                }
+                        }
                 }
         }
     
@@ -147,7 +156,7 @@ class InstanceTable extends AbstractExternalModule
                 
                 $instrumentFields = REDCap::getDataDictionary('array', false, true, $this->instrument);
                 
-                foreach ($instrumentFields as $fieldName => $fieldDetails) {
+                foreach ($instrumentFields as $instrumentField => $fieldDetails) {
                         $matches = array();
                         // /@INSTANCETABLE='?((\w+_arm_\d+[a-z]?:)?\w+)'?\s?/
                         // asdf@INSTANCETABLE='eee_arm_1:fff_fff' asdf
@@ -169,13 +178,13 @@ class InstanceTable extends AbstractExternalModule
                                 }
                                 
                                 $repeatingFormDetails = array();
-                                $repeatingFormDetails['field_name'] = $fieldName;
+                                $repeatingFormDetails['field_name'] = $instrumentField;
                                 $repeatingFormDetails['event_id'] = $eventId;
                                 $repeatingFormDetails['event_name'] = $eventName;
                                 $repeatingFormDetails['form_name'] = $formName;
                                 $repeatingFormDetails['permission_level'] = 0;
                                 $repeatingFormDetails['form_fields'] = array();
-                                $repeatingFormDetails['html_table_id'] = self::MODULE_VARNAME.'_'.$fieldName.'_tbl_'.$eventName.'_'.$formName;
+                                $repeatingFormDetails['html_table_id'] = self::MODULE_VARNAME.'_'.$instrumentField.'_tbl_'.$eventName.'_'.$formName;
                                 $repeatingFormDetails['html_table_class'] = self::MODULE_VARNAME.'_'.$eventName.'_'.$formName; // used to find tables to refresh after add/edit
 
                                 // filter records on an optional supplemental join key
@@ -313,6 +322,27 @@ class InstanceTable extends AbstractExternalModule
                                     $repeatingFormDetails['order_direction'] = 'desc';
                                 }
 
+                                // pick up option for field prefilling in new instances
+                                $matches = $prefillNewFields = array();
+                                $outerQuote = array('"',"'"); // work for both @INSTANCETABLE-PREFILL='pf1="[v]"' and @INSTANCETABLE-PREFILL="pf1='[v]'" quote patterns 
+                                foreach ($outerQuote as $quoteChar) {
+                                        if (preg_match_all("/".self::ACTION_TAG_PREFILL."\s*=\s*$quoteChar(.+)$quoteChar/", $fieldDetails['field_annotation'], $matches)) {
+                                                foreach ($matches[1] as $match) { // match 0 is full string with tag, match 1 is each tag's param - can have multiple @INSTANCETABLE-PREFILL
+                                                        $prefillNewFields[] = $this->escape(trim($match));
+                                                }
+                                        }
+                                }
+                                if (!empty($prefillNewFields)) {
+                                        $labelContent='<div class="'.self::MODULE_VARNAME.'-prefill-container">';
+                                        foreach ($prefillNewFields as $prefill) {
+                                                $labelContent .= '<div class="'.self::MODULE_VARNAME.'-prefill">'.$prefill.'</div>';
+                                        }
+                                        $labelContent .= '</div>';
+                                        // write prefill info into desc field's label so will get piping receivers around varnames
+                                        $this->Proj->metadata[$instrumentField]['element_label'] .= $labelContent;
+                                }
+                                // $repeatingFormDetails['prefill_fields'] = $prefillNewFields; // no need to do this
+                                
                                 $repeatingFormDetails["ajax"] = [
                                     "event_id" => $eventId,
                                     "form_name" => $formName,
@@ -382,6 +412,7 @@ class InstanceTable extends AbstractExternalModule
         }
         
         protected function makeHtmlTable($repeatingFormDetails, $canEdit) {
+                $instrumentField = $repeatingFormDetails['field_name'];
                 $tableElementId = $repeatingFormDetails['html_table_id'];
                 $tableFormClass = $repeatingFormDetails['html_table_class'];
                 $eventId = $repeatingFormDetails['event_id'];
@@ -453,7 +484,8 @@ class InstanceTable extends AbstractExternalModule
                 $html.='</table>';
 
                 if ($canEdit) {
-                        $html.='<div style="position:relative;top:'.self::ADD_NEW_BTN_YSHIFT.';margin-bottom:5px;"><button type="button" class="btn btn-sm btn-success " onclick="'.self::MODULE_VARNAME.'.addNewInstance(\''.$this->record.'\','.$eventId.',\''.$formName.'\',\''.$linkField.'\',\''.$linkValue.'\');"><span class="fas fa-plus-circle mr-1" aria-hidden="true"></span>'.$btnLabel.'</button></div>'; // Add new
+                        $disabled = (\Records::recordExists($this->Proj->project_id, $this->record)) ? '' : 'disabled="disabled" title="Record not yet saved"';
+                        $html.='<div style="position:relative;top:'.self::ADD_NEW_BTN_YSHIFT.';margin-bottom:5px;"><button '.$disabled.' type="button" class="btn btn-sm btn-success " onclick="'.self::MODULE_VARNAME.'.addNewInstance(\''.$this->record.'\','.$eventId.',\''.$formName.'\',\''.$instrumentField.'\',\''.$linkField.'\',\''.$linkValue.'\');"><span class="fas fa-plus-circle mr-1" aria-hidden="true"></span>'.$btnLabel.'</button></div>'; // Add new
                 }
                 return $html;
         }
@@ -672,6 +704,7 @@ class InstanceTable extends AbstractExternalModule
                 ?>
 <style type="text/css">
     .<?php echo self::MODULE_VARNAME;?> tbody tr { font-weight:normal; }
+    .<?php echo self::MODULE_VARNAME;?>-prefill-container { display:none; }
     /*.greenhighlight {background-color: inherit !important; }*/
     /*.greenhighlight table td {background-color: inherit !important; }*/
 </style>
@@ -809,12 +842,22 @@ var <?php echo self::MODULE_VARNAME;?> = (function(window, document, $, app_path
         );
     }
 
-
+    function getPrefillParams(tblFld) {
+        console.log(tblFld);
+        var prefill = '';
+        $('tr[sq_id=tbl]').find('div.MCRI_InstanceTable-prefill-container').find('div.MCRI_InstanceTable-prefill').each(function(i,elem){
+            var thisPF = $(elem).html();
+            var stripPipingReceivers = thisPF.replace(/<span class="piping_receiver piperec-(\d)+-(\w)+">(.*)<\/span>/gm,'$3');
+            prefill += '&'+stripPipingReceivers;
+        });
+        return prefill;
+    }
 
     return {
-        addNewInstance: function(record, event, form, linkFld, linkIns) {
+        addNewInstance: function(record, event, form, tblFld, linkFld, linkIns) {
             var ref = (linkFld=='')?'':'&link_field='+linkFld+'&link_instance='+linkIns;
-            instancePopup('Add instance', record, event, form, '1&extmod_instance_table_add_new=1'+ref);
+            var prefill = getPrefillParams(tblFld);
+            instancePopup('Add instance', record, event, form, '1&extmod_instance_table_add_new=1'+ref+prefill);
             return false;
         },
         editInstance: function(record, event, form, instance) {
