@@ -63,8 +63,10 @@ If you wish to provide the buttins that enable access to individual instances of
 ### Note on Tag Form: `-` vs. `_`
 The preferred form of these action tags changed in v1.11.0 of the module from containing `_` to containing `-` to give better rendering in the Online Designer. The change is backward-compatible and either form may be utilised, e.g. either `@INSTANCETABLE-HIDEADD` or `@INSTANCETABLE_HIDEADD` may be used to hide the "Add New button.
 
-### Note on Data Entry Form Field Pre-filling
-The data entry form field pre-filling capability is not limited to fields referenced in `@INSTANCETABLE-PREFILL` tags, but is enabled for **all fields and forms project-wide**. When this module is enabled in a project, adding `fieldname=value` pairs to the URL of an empty data entry form will have the fields prefilled with the specified values, as if `fieldname` has the action tag `@DEFAULT='value'`. 
+### Notes on Data Entry Form Field Pre-filling
+* If the tag parameter contains piping expressions then values will be piped live - the form containing the instance table need not be saved.
+* Multiple fields can be pre-filled either by specifying multiple `@INSTANCETABLE-PREFILL` tags or by specifying a query string-form argument, e.g. `@INSTANCETABLE-PREFILL='v1=1&v2=2'`.
+The data entry form field pre-filling capability is not limited to fields referenced in `@INSTANCETABLE-PREFILL` tags, but is enabled for **_all fields and forms project-wide_**. When this module is enabled in a project, adding `fieldname=value` pairs to the URL of an empty data entry form will have the fields prefilled with the specified values, as if `fieldname` has the action tag `@DEFAULT='value'`. 
 
 ## Example 
 This example shows (on the right-hand side) a form containing three descriptive text fields utilising the `@INSTANCETABLE` action tag. 

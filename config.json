@@ -66,7 +66,7 @@
         },
         {
             "tag": "@INSTANCETABLE-PREFILL",
-            "description": "Use <code>@INSTANCETABLE-PREFILL=rptformvar=[pagevar]</code> to have fields on new instances pre-filled with data from the current form (or elsewhere on the record) using `fieldname=value` pairs in the URL in a manner similar to survey form field pre-filling. Note: the data entry form field pre-filling capability is not limited to fields referenced in the tag, but is enabled for all fields and forms project-wide."
+            "description": "Use <code>@INSTANCETABLE-PREFILL='repeatingformfield=value'</code> to have fields on new instances pre-filled with the specified value using `fieldname=value` pairs in the URL in a manner similar to survey form field pre-filling. Notes: <ol><li>If the tag parameter contains piping expressions then values will be piped live - the form containing the instance table need not be saved.</li><li>Multiple fields can be pre-filled either by specifying multiple <code>@INSTANCETABLE-PREFILL</code> tags or by specifying a query string-form argument, e.g. <code>@INSTANCETABLE-PREFILL='v1=1&v2=2'</code>.</li><li>The data entry form field pre-filling capability is not limited to fields referenced in the tag, but is enabled for <em>all fields and forms project-wide</em>.</li></ol>"
         }
     ],
     "system-settings": [ ],
