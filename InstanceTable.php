@@ -113,7 +113,7 @@ class InstanceTable extends AbstractExternalModule
                 $filter = $payload["filter"];
                 $hideChoiceValues = (bool)$payload["hide_vals"];
                 $hideFormStatus = (bool)$payload["hide_form_status"];
-                $data = $this->getInstanceData($record, $event, $form, $fields, $filter, !$hideFormStatus, $hideChoiceValues);
+                $data = $this->getInstanceData($record, $event, $form, $fields, $filter, $this->instrument, !$hideFormStatus, $hideChoiceValues);
                 return $data;
             }
         }
@@ -448,7 +448,7 @@ class InstanceTable extends AbstractExternalModule
 
                 // if survey form get data on page load (as no add/edit and have no auth for an ajax call)
                 if ($this->isSurvey) {
-                        $instanceData = $this->getInstanceData($this->record, $eventId, $formName, $varList, $filter, false, $hideChoiceValues);
+                        $instanceData = $this->getInstanceData($this->record, $eventId, $formName, $varList, $filter, $this->instrument, false, $hideChoiceValues);
                         if (count($instanceData) > 0) {
                                 $html.='<tbody>';
                                 foreach ($instanceData as $rowValues) {
@@ -489,7 +489,7 @@ class InstanceTable extends AbstractExternalModule
                 return $html;
         }
         
-        public function getInstanceData($record, $event, $form, $fields, $filter, $includeFormStatus=true, $hideChoiceValues=false) {
+        public function getInstanceData($record, $event, $form, $fields, $filter, $formViewContext, $includeFormStatus=true, $hideChoiceValues=false) {
                 global $Proj, $lang, $user_rights;
                 $this->Proj = $Proj;
                 $this->lang = &$lang;
@@ -527,9 +527,10 @@ class InstanceTable extends AbstractExternalModule
 
                 if ($includeFormStatus) { $fields[] = $form.'_complete'; }
 
-                if (!empty($filter)) {
-                    // if context for instance table is a repeating form/event then replace any references to fields in this context in the logic expression with their current values
-                    // this prevents [current-instance] being automatically added by LogicTester::preformatLogicEventInstanceSmartVariable()
+                if ($form!=$formViewContext && !empty($filter)) {
+                    // if instance table of a repeating form/event is being viewed on a (different) repeating form/event 
+                    // then replace any references to fields from the current view context in the logic expression with their current values
+                    // this prevents [current-instance] being automatically added by LogicTester::preformatLogicEventInstanceSmartVariables()
                     // and enables the filter to pick up instances of another form with values that match something in the current repeating context
                     $filter = $this->replaceRepeatingContextValuesInLogicWithValues($filter);                                                
                 }
@@ -736,7 +737,7 @@ var <?php echo self::MODULE_VARNAME;?> = (function(window, document, $, app_path
                     taggedField.lengthChange = false;
                     break;
                 default:
-                    taggedField.lengthVal = lengthLbl = [taggedField.page_size];
+                    taggedField.lengthVal = [taggedField.page_size];
                     taggedField.lengthChange = false;
             } 
             var thisTbl;
@@ -1080,8 +1081,9 @@ var <?php echo self::MODULE_VARNAME;?> = (function(window, document, $, app_path
 
         /**
          * replaceRepeatingContextValuesInLogicWithValues
-         * if context for instance table is a repeating form/event then replace any references to fields in this context in the logic expression with their current values
-         * this prevents [current-instance] being automatically added by LogicTester::preformatLogicEventInstanceSmartVariable()
+         * if instance table of a repeating form/event is being viewed on a (different) repeating form/event 
+         * then replace any references to fields from the current view context in the logic expression with their current values
+         * this prevents [current-instance] being automatically added by LogicTester::preformatLogicEventInstanceSmartVariables()
          * and enables the filter to pick up instances of another form with values that match something in the current repeating context
          * @param string $filter
          * @return string
@@ -1109,7 +1111,7 @@ var <?php echo self::MODULE_VARNAME;?> = (function(window, document, $, app_path
             $currentContextData = \REDCap::getData('array', $this->record, $repeatingFields, $this->event_id);
 
             foreach ($repeatingFields as $rf) {
-                if (!str_contains($filter, "[$rf]")) continue; // field not used in logic
+                if (!str_contains($filter, "[$rf]")) continue; // field not used in logic - ignore
                 $currentContextValue = $currentContextData[$this->record]['repeat_instances'][$this->event_id][$rptFormKey][$this->repeat_instance][$rf] ?? '';
                 $replaceValue = ($currentContextValue!=='' && (starts_with($this->Proj->metadata[$rf]['text_validation_type'], 'integer') || starts_with($this->Proj->metadata[$rf]['text_validation_type'], 'number'))) 
                     ? "$currentContextValue"
@@ -1117,10 +1119,10 @@ var <?php echo self::MODULE_VARNAME;?> = (function(window, document, $, app_path
                 
                 $replacePatterns = array();
                 if (\REDCap::isLongitudinal()) {
-                    $replacePatterns[] = "/\[$currentEventName\]\[$rf\](\[current-instance\])?[\s=<>!]/";
-                    $replacePatterns[] = "/\[current-event\]\[$rf\](\[current-instance\])?[\s=<>!]/";
+                    $replacePatterns[] = "/\[$currentEventName\]\[$rf\](?:\[current-instance\])?(?=[\s=<>!])/";
+                    $replacePatterns[] = "/\[current-event\]\[$rf\](?:\[current-instance\])?(?=[\s=<>!])/";
                 } else {
-                    $replacePatterns[] = "/\[$rf\](\[current-instance\])?[\s=<>!]/";
+                    $replacePatterns[] = "/\[$rf\](?:\[current-instance\])?(?=[\s=<>!])/";
                 }
 
                 $filter = preg_replace($replacePatterns, $replaceValue, $filter);
