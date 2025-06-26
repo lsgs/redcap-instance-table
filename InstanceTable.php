@@ -304,9 +304,9 @@ class InstanceTable extends AbstractExternalModule
                                 }
 
                                 if (!$this->isSurvey && preg_match("/".self::ACTION_TAG_HIDEFORMINMENU."/", $fieldDetails['field_annotation'])) {
-                                    $hideStatus = $repeatingFormDetails['hide_form_in_menu'] = true;
+                                    $hideFormInMenu = $repeatingFormDetails['hide_form_in_menu'] = true;
                                 } else {
-                                    $hideStatus = $repeatingFormDetails['hide_form_in_menu'] = false;
+                                    $hideFormInMenu = $repeatingFormDetails['hide_form_in_menu'] = false;
                                 }
 
                                 // pick up option for custom sort order
