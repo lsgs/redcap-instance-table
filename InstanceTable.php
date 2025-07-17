@@ -81,9 +81,12 @@ class InstanceTable extends AbstractExternalModule
                         unset($_SESSION['extmod_closerec_home']);
                 } else if (PAGE==='DataEntry/index.php' && isset($_GET['id']) && isset($_GET['page'])) {
                         global $Proj;
+                        $allowPrefill = $this->getProjectSetting('allow-prefill');
+                        if (empty($allowPrefill)) return; 
+                        if (!isset($Proj->forms[$this->escape($_GET['page'])]['fields'])) return; // do nothing if $_GET['page'] not valid
                         foreach (array_keys($Proj->forms[$this->escape($_GET['page'])]['fields']) as $formField) {
                                 if (isset($_GET[$formField]) && $_GET[$formField]!='') {
-                                        $Proj->metadata[$formField]['misc'] .= " @DEFAULT='".$this->escape($_GET[$formField])."'";
+                                        $Proj->metadata[$formField]['misc'] .= " @DEFAULT='".$this->escape(urldecode($_GET[$formField]))."'";
                                 }
                         }
                 }

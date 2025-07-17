@@ -74,5 +74,11 @@
         }
     ],
     "system-settings": [ ],
-    "project-settings": [ ]
+    "project-settings": [
+        {
+            "key": "allow-prefill",
+            "name": "Allow pre-filling of fields via URL parameters in data entry mode (as for surveys):<br><p class=\"text-muted\">Add <code>&varname=value</code> to data entry form URLs to have field <code>varname</code> get the default value <code>value</code>.<br>Note: this is like using a <code>@DEFAULT</code> action tag on the field: it will work for unsaved forms only.</span>",
+            "type": "checkbox"
+        }
+    ]
 }
