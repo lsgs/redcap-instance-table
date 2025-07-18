@@ -82,7 +82,7 @@ class InstanceTable extends AbstractExternalModule
                 } else if (PAGE==='DataEntry/index.php' && isset($_GET['id']) && isset($_GET['page'])) {
                         global $Proj;
                         $allowPrefill = $this->getProjectSetting('allow-prefill');
-                        if (empty($allowPrefill)) return; 
+                        if (empty($allowPrefill) && !isset($_GET['extmod_instance_table'])) return; 
                         if (!isset($Proj->forms[$this->escape($_GET['page'])]['fields'])) return; // do nothing if $_GET['page'] not valid
                         foreach (array_keys($Proj->forms[$this->escape($_GET['page'])]['fields']) as $formField) {
                                 if (isset($_GET[$formField]) && $_GET[$formField]!='') {
@@ -852,9 +852,9 @@ var <?php echo self::MODULE_VARNAME;?> = (function(window, document, $, app_path
         console.log(tblFld);
         var prefill = '';
         $('tr[sq_id=tbl]').find('div.MCRI_InstanceTable-prefill-container').find('div.MCRI_InstanceTable-prefill').each(function(i,elem){
-            var thisPF = $(elem).html();
-            var stripPipingReceivers = thisPF.replace(/<span class="piping_receiver piperec-(\d)+-(\w)+">(.*)<\/span>/gm,'$3');
-            prefill += '&'+stripPipingReceivers;
+            var thisPF = $(elem).html().split(/=(.+)/s);
+            var stripPipingReceivers = thisPF[1].replace(/<span class="piping_receiver piperec-(\d)+-([\w-])+">(.*)<\/span>/,'$3');
+            prefill += '&'+thisPF[0]+'='+encodeURIComponent(stripPipingReceivers);
         });
         return prefill;
     }

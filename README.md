@@ -26,7 +26,7 @@ Include an "Add New" button using a descriptive text field containing an HTML bu
 <a class="btn btn-success text-decoration-none" href="[survey-url:my_repeating_survey][new-instance]"><i class="fas fa-plus"></i> Add New</a>
 ```
 #### Links to Edit Specific Survey Instances
-If you wish to provide the buttins that enable access to individual instances of a repeating surveys for editing, then include a `@CALCTEXT` field in your repeating survey that generates the HTML for an "Edit" button. In this example, the instance has an "Edit" button up until it has been completed, at which point the button changes to just a check mark to indicate completion:
+If you wish to provide buttons that enable access to individual instances of a repeating surveys for editing, then include a `@CALCTEXT` field in your repeating survey that generates the HTML for an "Edit" button. In this example, the instance has an "Edit" button up until it has been completed, at which point the button changes to just a check mark to indicate completion:
 ```
 @CALCTEXT( 
   if(
