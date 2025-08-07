@@ -208,7 +208,13 @@ class InstanceTable extends AbstractExternalModule
                                 // keep legacy support for _SRC and _DST tags but any in use should be converted to _REF tags
                                 $matches = array();
                                 if (preg_match("/".self::ACTION_TAG_SRC."='?((\w+_arm_\d+[a-z]?:)?\w+)'?\s?/", $fieldDetails['field_annotation'], $matches)) {
-                                        $recordData = REDCap::getData('array', $this->record, $matches[1], $this->event_id, null, false, false, false, null, false); // export raw
+                                        $recordData = REDCap::getData([
+                                            'return_format' => 'array',
+                                            'records' => $this->record,
+                                            'fields' => $matches[1],
+                                            'events' => $this->event_id,
+                                            'exportAsLabels' => false, // export raw
+                                        ]);
                                         $join_val  = $recordData[1]['repeat_instances'][$this->event_id][$this->instrument][$this->repeat_instance][$matches[1]];
                                         if (preg_match("/".self::ACTION_TAG_DST."='?((\w+_arm_\d+[a-z]?:)?\w+)'?\s?/", $fieldDetails['field_annotation'], $matches)) {
                                                 $filter  = $this->escape("[" . $matches[1] ."]='" .$join_val."'");
@@ -538,7 +544,14 @@ class InstanceTable extends AbstractExternalModule
                     $filter = $this->replaceRepeatingContextValuesInLogicWithValues($filter);                                                
                 }
 
-                $recordData = REDCap::getData('array', $record, $fields, $event, null, false, false, false, $filter, true); // export labels not raw
+                $recordData = REDCap::getData([
+                    'returnFormat' => 'array',
+                    'records' => [$record],
+                    'fields' => $fields,
+                    'events' => $event,
+                    'filterLogic' => $filter,
+                    'exportAsLabels' => true, // export labels not raw
+                ]);
 
                 $formKey = ($this->Proj->isRepeatingEvent($event))
                         ? ''     // repeating event - empty string key
@@ -1069,8 +1082,13 @@ var <?php echo self::MODULE_VARNAME;?> = (function(window, document, $, app_path
                                 ? ''             // repeating event - empty string key
                                 : $_GET['page']; // repeating form  - form name key
 
-                        $recordData = REDCap::getData('array',$_GET['id'],$_GET['page'].'_complete',$_GET['event_id']);
-                        
+                        $recordData = REDCap::getData([
+                            'return_format' => 'array',
+                            'records' => $_GET['id'],
+                            'forms' => $_GET['page'].'_complete',
+                            'events' => $_GET['event_id'],
+                        ]);
+
                         if (array_key_exists($_GET['id'],$recordData) &&
                             array_key_exists('repeat_instances',$recordData[$_GET['id']]) &&
                             array_key_exists($_GET['event_id'], $recordData[$_GET['id']]['repeat_instances'])) {
@@ -1111,7 +1129,12 @@ var <?php echo self::MODULE_VARNAME;?> = (function(window, document, $, app_path
             }
 
             $currentEventName = (\REDCap::isLongitudinal()) ? \REDCap::getEventNames(true, false, $this->event_id) : '';
-            $currentContextData = \REDCap::getData('array', $this->record, $repeatingFields, $this->event_id);
+            $currentContextData = \REDCap::getData([
+                'return_format' => 'array',
+                'records' => $this->record,
+                'fields' => $repeatingFields,
+                'events' => $this->event_id,
+            ]);
 
             foreach ($repeatingFields as $rf) {
                 if (!str_contains($filter, "[$rf]")) continue; // field not used in logic - ignore
@@ -1122,10 +1145,10 @@ var <?php echo self::MODULE_VARNAME;?> = (function(window, document, $, app_path
                 
                 $replacePatterns = array();
                 if (\REDCap::isLongitudinal()) {
-                    $replacePatterns[] = "/\[$currentEventName\]\[$rf\](?:\[current-instance\])?(?=[\s=<>!])/";
-                    $replacePatterns[] = "/\[current-event\]\[$rf\](?:\[current-instance\])?(?=[\s=<>!])/";
+                    $replacePatterns[] = "/\[$currentEventName\]\[$rf\](?:\[current-instance\])?/";
+                    $replacePatterns[] = "/\[current-event\]\[$rf\](?:\[current-instance\])?/";
                 } else {
-                    $replacePatterns[] = "/\[$rf\](?:\[current-instance\])?(?=[\s=<>!])/";
+                    $replacePatterns[] = "/\[$rf\](?:\[current-instance\])?/";
                 }
 
                 $filter = preg_replace($replacePatterns, $replaceValue, $filter);
