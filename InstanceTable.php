@@ -1122,10 +1122,10 @@ var <?php echo self::MODULE_VARNAME;?> = (function(window, document, $, app_path
                 
                 $replacePatterns = array();
                 if (\REDCap::isLongitudinal()) {
-                    $replacePatterns[] = "/\[$currentEventName\]\[$rf\](?:\[current-instance\])?(?=[\s=<>!])/";
-                    $replacePatterns[] = "/\[current-event\]\[$rf\](?:\[current-instance\])?(?=[\s=<>!])/";
+                    $replacePatterns[] = "/\[$currentEventName\]\[$rf\](?:\[current-instance\])?/";
+                    $replacePatterns[] = "/\[current-event\]\[$rf\](?:\[current-instance\])?/";
                 } else {
-                    $replacePatterns[] = "/\[$rf\](?:\[current-instance\])?(?=[\s=<>!])/";
+                    $replacePatterns[] = "/\[$rf\](?:\[current-instance\])?/";
                 }
 
                 $filter = preg_replace($replacePatterns, $replaceValue, $filter);
