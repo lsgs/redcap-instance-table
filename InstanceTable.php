@@ -983,6 +983,9 @@ var <?php echo self::MODULE_VARNAME;?> = (function(window, document, $, app_path
                 event.preventDefault();
                 window.opener.refreshTables();
                 dataEntrySubmit(this);
+                setTimeout(() => {
+                    window.close();
+                }, 10);
             });
         $('#submit-btn-savecontinue') // Save & Stay - preserve &extmod_instance_table=1 in url when reload 
             .attr('name', 'submit-btn-savecontinue')
