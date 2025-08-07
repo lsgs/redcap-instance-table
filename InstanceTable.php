@@ -824,7 +824,7 @@ var <?php echo self::MODULE_VARNAME;?> = (function(window, document, $, app_path
 
     function instancePopup(title, record, event, form, instance) {
         var url = app_path_webroot+'DataEntry/index.php?pid='+pid+'&id='+record+'&event_id='+event+'&page='+form+'&instance='+instance+'&extmod_instance_table=1';
-        popupWindow(url,title,window,700,950);
+        popupWindow(url,title,window,850,window.outerHeight * .8);
           //refreshTableDialog(event, form);
         return false;
     }
