@@ -185,7 +185,7 @@ class InstanceTable extends AbstractExternalModule
                                 $repeatingFormDetails['event_id'] = $eventId;
                                 $repeatingFormDetails['event_name'] = $eventName;
                                 $repeatingFormDetails['form_name'] = $formName;
-                                $repeatingFormDetails['permission_level'] = 0;
+                                $repeatingFormDetails['permission_level'] = "no-access";
                                 $repeatingFormDetails['form_fields'] = array();
                                 $repeatingFormDetails['html_table_id'] = self::MODULE_VARNAME.'_'.$instrumentField.'_tbl_'.$eventName.'_'.$formName;
                                 $repeatingFormDetails['html_table_class'] = self::MODULE_VARNAME.'_'.$eventName.'_'.$formName; // used to find tables to refresh after add/edit
@@ -369,7 +369,7 @@ class InstanceTable extends AbstractExternalModule
         protected function checkIsRepeating() {
                 foreach ($this->taggedFields as $key => $repeatingFormDetails) {
                         if (!$this->Proj->isRepeatingFormOrEvent($repeatingFormDetails['event_id'], $repeatingFormDetails['form_name'])) {
-                                $repeatingFormDetails['permission_level'] = -1; // error
+                                $repeatingFormDetails['permission_level'] = "error";
                         }
                         $this->taggedFields[$key] = $repeatingFormDetails;
                 }
@@ -378,16 +378,22 @@ class InstanceTable extends AbstractExternalModule
         protected function checkUserPermissions() {
                 foreach ($this->taggedFields as $key => $repeatingFormDetails) {
                         if ($this->isSurvey) {
-                                $repeatingFormDetails['permission_level'] = 2; // always read only in survey view
+                                $repeatingFormDetails['permission_level'] = "read-only"; // always read only in survey view
                         } else if ($repeatingFormDetails['hide_add_btn']) {
-                                $repeatingFormDetails['permission_level'] = 2; // Hide "Add" button = "read only" (effectively!)
+                                $repeatingFormDetails['permission_level'] = "read-only"; // Hide "Add" button = "read only" (effectively!)
                         } else if ($repeatingFormDetails['permission_level'] > -1) {
-                                switch ($this->user_rights['forms'][$repeatingFormDetails['form_name']]) {
-                                        case '1': $repeatingFormDetails['permission_level'] = 1; break; // view/edit
-                                        case '2': $repeatingFormDetails['permission_level'] = 2; break; // read only
-                                        case '3': $repeatingFormDetails['permission_level'] = 1; break; // view/edit + edit survey responses
-                                        case '0': $repeatingFormDetails['permission_level'] = 0; break; // no access
-                                        default : $repeatingFormDetails['permission_level'] = -1; break;
+                                $permissionLevel = $this->user_rights['forms'][$repeatingFormDetails['form_name']];
+                                if (\UserRights::hasDataViewingRights($permissionLevel, "view-edit")) {
+                                    $repeatingFormDetails['permission_level'] = "view-edit";
+                                }
+                                else if (\UserRights::hasDataViewingRights($permissionLevel, "read-only")) {
+                                    $repeatingFormDetails['permission_level'] = "read-only";
+                                }
+                                else if (\UserRights::hasDataViewingRights($permissionLevel, "no-access")) {
+                                    $repeatingFormDetails['permission_level'] = "no-access";
+                                }
+                                else {
+                                    $repeatingFormDetails['permission_level'] = "error";
                                 }
                         }
                         $this->taggedFields[$key] = $repeatingFormDetails;
@@ -397,16 +403,16 @@ class InstanceTable extends AbstractExternalModule
         protected function setMarkup() {
                 foreach ($this->taggedFields as $key => $repeatingFormDetails) {
                         switch ($repeatingFormDetails['permission_level']) {
-                                case 1: // view & edit
+                                case "view-edit":
                                         $repeatingFormDetails['markup'] = $this->makeHtmlTable($repeatingFormDetails, true);
                                         break;
-                                case '2': // read only
+                                case "read-only":
                                         $repeatingFormDetails['markup'] = $this->makeHtmlTable($repeatingFormDetails, false);
                                         break;
-                                case '0': // no access
+                                case "no-access":
                                         $repeatingFormDetails['markup'] = self::ERROR_NO_VIEW_ACCESS;
                                         break;
-                                default: // -1 error
+                                default: // error
                                         if (REDCap::isLongitudinal()) {
                                                 $eventName = $this->Proj->eventInfo[$repeatingFormDetails['event_id']]['name'];
                                                 $repeatingFormDetails['markup'] = sprintf(self::ERROR_NOT_REPEATING_LONG, $repeatingFormDetails['form_name'], $eventName);
@@ -515,7 +521,7 @@ class InstanceTable extends AbstractExternalModule
                 
                 $hasPermissions = false;
                 foreach($this->taggedFields as $fieldDetails) {
-                    if($fieldDetails["form_name"] == $form && $fieldDetails["permission_level"] > 0) {
+                    if($fieldDetails["form_name"] == $form && in_array($fieldDetails["permission_level"], ["view-edit", "read-only"], true)) {
                         $hasPermissions = true;
                     }
                 }
