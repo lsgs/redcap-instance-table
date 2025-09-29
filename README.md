@@ -61,7 +61,7 @@ The vast majority of this module's functionality is provided via the action tags
 * `@INSTANCETABLE-HIDEFORMSTATUS`: Suppress display of the form status field in data entry view. (The form status field is always suppressed in survey mode.)
 * `@INSTANCETABLE-HIDEFORMINMENU`: Hide the link to the repeating form in the Data Collection section of the project page menu.
 * `@INSTANCETABLE-SORTCOL=n[:direction]`: Specify the column index for the default table sort. The index number should be a positive integer, with <code>1</code> being the first column (i.e. instance number, which is always present even if hidden using `@INSTANCETABLE-HIDEINSTANCECOL`). Direction is optional and can be `asc` (default) or `desc` (case-insensitive) for ascending or descending respectively. The default sort in the absence of this tag is on the first column in ascending order, i.e. `@INSTANCETABLE-SORTCOL=1:asc`. Note that your browser will remember any custom sorting that you apply, therefore this setting only applies a default sort when you first view an instance table.
-* `@INSTANCETABLE-PREFILL=rptformvar=[pagevar]`: Have fields on new instances pre-filled with data from the current form (or elsewhere on the record) using `fieldname=value` pairs in the URL in a manner similar to survey form field pre-filling. 
+* `@INSTANCETABLE-PREFILL='rptformvar=[pagevar]'`: Have fields on new instances pre-filled with data from the current form (or elsewhere on the record) using `fieldname=value` pairs in the URL in a manner similar to survey form field pre-filling. 
 
 ### Tags Used for Fields on a Repeating Form 
 * `@INSTANCETABLE-HIDE`: Ignore this field in instance all tables.
@@ -73,7 +73,7 @@ The preferred form of these action tags changed in v1.11.0 of the module from co
 ### Notes on Data Entry Form Field Pre-filling
 * If the tag parameter contains piping expressions then values will be piped live - the form containing the instance table need not be saved first.
 * Multiple fields can be pre-filled either by specifying multiple `@INSTANCETABLE-PREFILL` tags or by specifying a query string-form argument, e.g. `@INSTANCETABLE-PREFILL='v1=1&v2=2'`.
-* The data entry form field pre-filling capability need not be limited to fields referenced in `@INSTANCETABLE-PREFILL` tags, but can be enabled for **_all fields and forms project-wide_** using the project-level setting "_Allow pre-filling of fields via URL parameters in data entry mode_".
+* The data entry form field pre-filling capability need not be limited to fields referenced in `@INSTANCETABLE-PREFILL` tags, but can be enabled for **_all fields and forms project-wide_** using the project-level setting "_Allow pre-filling of fields via URL parameters in data entry mode_". This includes in projects not otherwise utilising "Instance Table" functionality.
 * When the "_Allow pre-filling_" option is enabled in a project, adding `fieldname=value` pairs to the URL of an empty data entry form will have the fields prefilled with the specified values as if `fieldname` has the action tag `@DEFAULT='value'`. As with survey field pre-filling, this works for unsaved forms only.
 
 ## Example 

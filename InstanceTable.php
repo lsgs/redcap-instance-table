@@ -86,7 +86,7 @@ class InstanceTable extends AbstractExternalModule
                         if (!isset($Proj->forms[$this->escape($_GET['page'])]['fields'])) return; // do nothing if $_GET['page'] not valid
                         foreach (array_keys($Proj->forms[$this->escape($_GET['page'])]['fields']) as $formField) {
                                 if (isset($_GET[$formField]) && $_GET[$formField]!='') {
-                                        $Proj->metadata[$formField]['misc'] .= " @DEFAULT='".$this->escape(urldecode($_GET[$formField]))."'";
+                                        $Proj->metadata[$formField]['misc'] .= " @SETVALUE='".$this->escape(urldecode($_GET[$formField]))."'";
                                 }
                         }
                 }
@@ -166,8 +166,11 @@ class InstanceTable extends AbstractExternalModule
                         // Full match	4-39	@INSTANCETABLE='eee_arm_1:fff_fff'
                         // Group 1.	20-37	eee_arm_1:fff_fff
                         // Group 2.	20-30	eee_arm_1:
-                        if ($fieldDetails['field_type']==='descriptive' &&
-                            preg_match("/".self::ACTION_TAG."\s*=\s*'?((\w+_arm_\d+[a-z]?:)?\w+)'?\s?/", $fieldDetails['field_annotation'], $matches)) {
+                        if ($fieldDetails['field_type']!=='descriptive') continue;
+                        
+                        $fieldDetails['field_annotation'] = \Form::replaceIfActionTag($fieldDetails['field_annotation'], $this->Proj->project_id, $this->record, $this->event_id, $this->instrument, $this->instance);
+            
+                        if (preg_match("/".self::ACTION_TAG."\s*=\s*'?((\w+_arm_\d+[a-z]?:)?\w+)'?\s?/", $fieldDetails['field_annotation'], $matches)) {
 
                                 if (REDCap::isLongitudinal() && strpos(trim($matches[1]), ':')>0) {
                                         $eventform = explode(':', trim($matches[1]), 2);
@@ -401,7 +404,7 @@ class InstanceTable extends AbstractExternalModule
         }
         
         protected function hasDataViewingRights($permissionLevel, $permission) {
-            if (version_compare(REDCAP_VERSION, '15.7.0', '>=')) {
+            if (method_exists('\UserRights', 'hasDataViewingRights')) {
                 return \UserRights::hasDataViewingRights($permissionLevel, $permission);
             } else {
                 if ($permission=='view-edit' && ($permissionLevel==1 || $permissionLevel==3)) return true;
@@ -888,9 +891,15 @@ var <?php echo self::MODULE_VARNAME;?> = (function(window, document, $, app_path
         $('tr[sq_id=tbl]').find('div.MCRI_InstanceTable-prefill-container').find('div.MCRI_InstanceTable-prefill').each(function(i,elem){
             var thisPF = $(elem).html().split(/=(.+)/s);
             var stripPipingReceivers = thisPF[1].replace(/<span class="piping_receiver piperec-(\d)+-([\w-])+">(.*)<\/span>/,'$3');
-            prefill += '&'+thisPF[0]+'='+encodeURIComponent(stripPipingReceivers);
+            prefill += '&'+thisPF[0]+'='+encodeURIComponent(decodeHTMLEntities(stripPipingReceivers));
         });
         return prefill;
+    }
+
+    function decodeHTMLEntities(text) {
+        const textArea = document.createElement('textarea');
+        textArea.innerHTML = text;
+        return textArea.value;
     }
 
     return {
@@ -1019,7 +1028,7 @@ var <?php echo self::MODULE_VARNAME;?> = (function(window, document, $, app_path
                 dataEntrySubmit(this);
                 setTimeout(() => {
                     window.close();
-                }, 10);
+                }, 100);
             });
         $('#submit-btn-savecontinue') // Save & Stay - preserve &extmod_instance_table=1 in url when reload 
             .attr('name', 'submit-btn-savecontinue')
@@ -1115,7 +1124,8 @@ var <?php echo self::MODULE_VARNAME;?> = (function(window, document, $, app_path
 
                         if (array_key_exists($_GET['id'],$recordData) &&
                             array_key_exists('repeat_instances',$recordData[$_GET['id']]) &&
-                            array_key_exists($_GET['event_id'], $recordData[$_GET['id']]['repeat_instances'])) {
+                            array_key_exists($_GET['event_id'], $recordData[$_GET['id']]['repeat_instances']) &&
+                            array_key_exists($formKey, $recordData[$_GET['id']]['repeat_instances'][$_GET['event_id']]) ) {
                                 $currentInstances = array_keys($recordData[$_GET['id']]['repeat_instances'][$_GET['event_id']][$formKey]);
                                 $_GET['instance'] = (is_null($currentInstances)) ? 1 : 1 + end($currentInstances);
                         } else {
