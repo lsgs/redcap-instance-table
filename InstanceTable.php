@@ -57,16 +57,6 @@ class InstanceTable extends AbstractExternalModule
         const REPLQUOTE_DOUBLE = 'REPLQUOTE_DOUBLE';
 
         /**
-         * redcap_save_record
-         * When saving an instance in the popup, get &extmod_instance_table=1 into the redirect link e.g. when missing required fields found
-         */
-        public function redcap_save_record($project_id, $record, $instrument, $event_id, $group_id, $survey_hash, $response_id, $repeat_instance) {
-                if (isset($_GET['extmod_instance_table']) && $_GET['extmod_instance_table']=='1') {
-                    $_GET['pid'] .= '&extmod_instance_table=1'; // $_GET['instance'] .= '&extmod_instance_table=1';
-                }
-        }
-
-        /**
          * redcap_every_page_top
          * - When doing Save & Exit or Delete Instance from popup then persist a flag on the session.
          *   If Record Home page is loading when this flag is present then window.close() 
@@ -74,12 +64,20 @@ class InstanceTable extends AbstractExternalModule
          * @param type $project_id
          */
         public function redcap_every_page_top($project_id) {
-                if (PAGE==='DataEntry/record_home.php' && isset($_GET['id']) && isset($_SESSION['extmod_closerec_home']) && $_GET['id']==$_SESSION['extmod_closerec_home']) {
+                if (PAGE==='DataEntry/record_home.php' && isset($_GET['id']) && isset($_SESSION['extmod_instance_table_closerec_home']) && $_GET['id']==$_SESSION['extmod_instance_table_closerec_home']) {
                         ?>
                         <script type="text/javascript">/* EM Instance Table */ window.close();</script>
                         <?php
-                        unset($_SESSION['extmod_closerec_home']);
-                } else if (PAGE==='DataEntry/index.php' && isset($_GET['id']) && isset($_GET['page'])) {
+
+                } else if (PAGE==='DataEntry/index.php' && isset($_GET['id']) && isset($_SESSION['extmod_instance_table_popup_save']) && $_GET['id']==$_SESSION['extmod_instance_table_popup_save']) {
+                        ?>
+                        <script type="text/javascript">/* EM Instance Table */ window.location.href = window.location.href+'&extmod_instance_table=1';</script>
+                        <?php
+                }
+                unset($_SESSION['extmod_instance_table_closerec_home']);
+                unset($_SESSION['extmod_instance_table_popup_save']);
+                
+                if (PAGE==='DataEntry/index.php' && isset($_GET['id']) && isset($_GET['page'])) {
                         global $Proj;
                         $allowPrefill = $this->getProjectSetting('allow-prefill');
                         if (empty($allowPrefill) && !isset($_GET['extmod_instance_table'])) return; 
@@ -405,7 +403,7 @@ class InstanceTable extends AbstractExternalModule
         
         protected function hasDataViewingRights($permissionLevel, $permission) {
             if (method_exists('\UserRights', 'hasDataViewingRights')) {
-                return \UserRights::hasDataViewingRights($permissionLevel, $permission);
+                return call_user_func('\UserRights::hasDataViewingRights',$permissionLevel, $permission);
             } else {
                 if ($permission=='view-edit' && ($permissionLevel==1 || $permissionLevel==3)) return true;
                 if ($permission=='read-only' && ($permissionLevel==1 || $permissionLevel==3)) return true;
@@ -888,7 +886,7 @@ var <?php echo self::MODULE_VARNAME;?> = (function(window, document, $, app_path
     function getPrefillParams(tblFld) {
         console.log(tblFld);
         var prefill = '';
-        $('tr[sq_id=tbl]').find('div.MCRI_InstanceTable-prefill-container').find('div.MCRI_InstanceTable-prefill').each(function(i,elem){
+        $('tr[sq_id='+tblFld+']').find('div.MCRI_InstanceTable-prefill-container').find('div.MCRI_InstanceTable-prefill').each(function(i,elem){
             var thisPF = $(elem).html().split(/=(.+)/s);
             var stripPipingReceivers = thisPF[1].replace(/<span class="piping_receiver piperec-(\d)+-([\w-])+">(.*)<\/span>/,'$3');
             prefill += '&'+thisPF[0]+'='+encodeURIComponent(decodeHTMLEntities(stripPipingReceivers));
@@ -964,15 +962,16 @@ var <?php echo self::MODULE_VARNAME;?> = (function(window, document, $, app_path
         protected function popupViewTweaks() {
             global $lang, $longitudinal, $Proj, $user_rights;
 
-            $record = \htmlspecialchars($_GET['id'], ENT_QUOTES);
+            $record = $this->escape($_GET['id']);
             $delFormAlertMsg = ($longitudinal) ? RCView::tt("data_entry_243") : RCView::tt("data_entry_239");
 			if (isset($Proj->forms[$_GET['page']]['survey_id']) && $user_rights['forms'][$_GET['page']] == '3' && isset($_GET['editresp'])) {
 				$delFormAlertMsg .= RCView::div(array('style'=>'margin-top:15px;color:#C00000;'), RCView::tt("data_entry_241"));
-    }
+            }
             $delFormAlertMsg .= RCView::div(array('style'=>'margin-top:15px;color:#C00000;'), RCView::tt_i("data_entry_559", array($_GET['instance'])));
-    $delFormAlertMsg .= RCView::div(array('style'=>'margin-top:15px;color:#C00000;font-weight:bold;'), RCView::tt("data_entry_190"));
+            $delFormAlertMsg .= RCView::div(array('style'=>'margin-top:15px;color:#C00000;font-weight:bold;'), RCView::tt("data_entry_190"));
             $delFormAlertMsg = js_escape($delFormAlertMsg, true);
 
+            $this->initializeJavascriptModuleObject();
             ?>
 <style type="text/css">
     .navbar-toggler, #west, #formSaveTip, #dataEntryTopOptionsButtons, #formtop-div { display: none !important; }
@@ -981,116 +980,118 @@ var <?php echo self::MODULE_VARNAME;?> = (function(window, document, $, app_path
 </style>
 <script type="text/javascript">
     /* EM Instance Table JS */
-    $.urlParamReplace = function (url, name, value) {
-        var results = new RegExp('[\?&]' + name + '=([^&#]*)').exec(url);
-        if (results !== null) {
-            return url.replace(name + '=' + results[1], name + '=' + value);
-        } else {
-            return url;
-        }
-    }
+    $(function(){
+        let module = <?=$this->getJavascriptModuleObjectName()?>;
 
-    $.urlGetParam = function (param_name) {
-        var results = new RegExp('[\?&]' + param_name + '=([^&#]*)').exec(window.location.href);
-        if (results !== null) {
-            return results[1];
-        } else {
-            return null;
-        }
-    }
-
-    $.redirectUrl = function(url) {
-        window.location.href = url;
-        return;
-    }
-
-    $(document).ready(function() {
-        // add this window.unload for added reliability in invoking refreshTables on close of popup
-        window.onunload = function(){window.opener.refreshTables();};
-        $('#form').attr('action',$('#form').attr('action')+'&extmod_instance_table=1');
-
-        // set default value of ref field, if supplied
-        var linkField = $.urlGetParam('link_field');
-        if (linkField!==null) {
-            var linkInput = $('[name='+linkField+']');
-            if (linkInput.length) {
-                $(linkInput).val($.urlGetParam('link_instance'));
-            }
-        }
-
-        // changes to save/cancel/delete buttons in popup window
-        $('button[name=submit-btn-saverecord]')// Save & Exit Form (here means save and close the popup)
-            .removeAttr('onclick')
-            .click(function(event) {
-                $('#form').append('<input type="hidden" name="extmod_closerec_home" value="<?=$record?>">');
-                event.preventDefault();
-                window.opener.refreshTables();
-                dataEntrySubmit(this);
-                setTimeout(() => {
-                    window.close();
-                }, 100);
-            });
-        $('#submit-btn-savecontinue') // Save & Stay - preserve &extmod_instance_table=1 in url when reload 
-            .attr('name', 'submit-btn-savecontinue')
-            .removeAttr('onclick')
-            .click(function(event) {
-                var redirectUrl = window.location.href.replace('&extmod_instance_table_add_new=1','');
-                event.preventDefault();
-                window.opener.refreshTables();
-                dataEntrySubmit(this);
-                window.setTimeout($.redirectUrl, 500, redirectUrl);
-            });
-        $('#submit-btn-savenextinstance')// Save & Next Instance (not necessarily a new instance)
-            .attr('name', 'submit-btn-savenextinstance')
-            .removeAttr('onclick')
-            .click(function(event) {
-                var currentUrl = window.location.href;
-                var redirectUrl = $.urlParamReplace(currentUrl, "instance", 1+(1*$.urlGetParam("instance")));
-                event.preventDefault();
-                window.opener.refreshTables();
-                dataEntrySubmit(this);
-                window.setTimeout($.redirectUrl, 500, redirectUrl);
-            });
-        $('button[name=submit-btn-cancel]')
-            .removeAttr('onclick')
-            .click(function() {
-                window.opener.refreshTables();
-                window.close();
-            });
-            <?php
-            if ( isset($_GET['extmod_instance_table_add_new'])) {
-            ?>
-        $('button[name=submit-btn-deleteform]').css("display", "none");
-            <?php
+        module.addingNewInstance = <?=(isset($_GET['extmod_instance_table_add_new'])) ? 1 : 0?>;
+        module.showRequiredMessage = <?=(isset($_GET['__reqmsg'])) ? 1 : 0?>;
+        module.urlParamReplace = function (url, name, value) {
+            var results = new RegExp('[\?&]' + name + '=([^&#]*)').exec(url);
+            if (results !== null) {
+                return url.replace(name + '=' + results[1], name + '=' + value);
             } else {
-            ?>
-        $('button[name=submit-btn-deleteform]')
-            .removeAttr('onclick')
-            .click(function(event) {
-                $('#form').append('<input type="hidden" name="extmod_closerec_home" value="<?=$record?>">');
-                simpleDialog(
-                    '<div style="margin:10px 0;font-size:13px;"><?=$delFormAlertMsg?></div>',
-                    '<?=$lang['data_entry_237']?> \"<?=$record?>\"<?=$lang['questionmark']?>'
-                    ,null,600,null,lang.global_53,
-                    function(){
-                        event.preventDefault();
-                        window.opener.refreshTables();
-                        dataEntrySubmit( 'submit-btn-deleteform' );
-                    },
-                    '<?=$lang['data_entry_234']?>' //'Delete data for THIS FORM only'
-                );
-                return false;
-            });
-            <?php
+                return url;
             }
-            if (isset($_GET['__reqmsg'])) {
-            ?>
-            setTimeout(function() {
-                    $('div[aria-describedby="reqPopup"]').find('div.ui-dialog-buttonpane').find('button').not(':last').hide(); // .css('visibility', 'visible'); // required fields message show only "OK" button, not ignore & leave
-                }, 100);
-            <?php
+        };
+        module.urlGetParam = function (param_name) {
+            var results = new RegExp('[\?&]' + param_name + '=([^&#]*)').exec(window.location.href);
+            if (results !== null) {
+                return results[1];
+            } else {
+                return null;
             }
-            ?>
+        };
+        module.redirectUrl = function(url) {
+            window.location.href = url;
+            return;
+        };
+        module.init = function() {
+            // add this window.unload for added reliability in invoking refreshTables on close of popup
+            window.onunload = function(){window.opener.refreshTables();};
+            $('#form').attr('action',$('#form').attr('action')+'&extmod_instance_table=1');
+            $('#form').append('<input type="hidden" name="extmod_instance_table_closerec_home" value="<?=$record?>">');
+            $('#form').append('<input type="hidden" name="extmod_instance_table_popup_save" value="<?=$record?>">>');
+
+            // suppress display of header links to other instances
+            let currentDisplayDiv = $('#inviteFollowupSurveyBtn > div:first');
+            $(currentDisplayDiv).find('span:first').insertBefore(currentDisplayDiv);
+            $(currentDisplayDiv).hide();
+
+            // set default value of ref field, if supplied
+            var linkField = module.urlGetParam('link_field');
+            if (linkField!==null) {
+                var linkInput = $('[name='+linkField+']');
+                if (linkInput.length) {
+                    $(linkInput).val(module.urlGetParam('link_instance'));
+                }
+            }
+
+            // changes to save/cancel/delete buttons in popup window
+            $('button[name=submit-btn-saverecord]')// Save & Exit Form (here means save and close the popup)
+                .removeAttr('onclick')
+                .click(function(event) {
+                    event.preventDefault();
+                    window.opener.refreshTables();
+                    dataEntrySubmit(this);
+                });
+
+            $('#submit-btn-savecontinue') // Save & Stay
+                .attr('name', 'submit-btn-savecontinue')
+                .removeAttr('onclick')
+                .click(function(event) {
+                    event.preventDefault();
+                    window.opener.refreshTables();
+                    dataEntrySubmit(this);
+                });
+
+            $('#submit-btn-savenextinstance')// Save & Next Instance (not necessarily a new instance)
+                .attr('name', 'submit-btn-savenextinstance')
+                .removeAttr('onclick')
+                .click(function(event) {
+                    event.preventDefault();
+                    window.opener.refreshTables();
+                    dataEntrySubmit(this);
+                });
+
+            $('button[name=submit-btn-cancel]')
+                .removeAttr('onclick')
+                .click(function() {
+                    window.opener.refreshTables();
+                    window.close();
+                });
+                
+            if (module.addingNewInstance) {
+                $('#__DELETEBUTTONS__-div').css("display", "none");
+            } else {
+                $('button[name=submit-btn-deleteform]')
+                    .removeAttr('onclick')
+                    .click(function(event) {
+                        simpleDialog(
+                            '<div style="margin:10px 0;font-size:13px;"><?=$delFormAlertMsg?></div>',
+                            '<?=$lang['data_entry_237']?> \"<?=$record?>\"<?=\RCView::tt('questionmark')?>'
+                            ,null,600,null,lang.global_53,
+                            function(){
+                                event.preventDefault();
+                                window.opener.refreshTables();
+                                dataEntrySubmit( 'submit-btn-deleteform' );
+                            },
+                            '<?=\RCView::tt('data_entry_234','')?>' //'Delete data for THIS FORM only'
+                        );
+                        return false;
+                    });
+            }
+            if (module.showRequiredMessage) {
+                $('body').on('dialogopen', function(event) {
+                    if(event.target.id=='reqPopup') {
+                        $('div[aria-describedby="reqPopup"]').find('div.ui-dialog-buttonpane').find('button').not(':last').hide(); // .css('visibility', 'visible'); // required fields message show only "OK" button, not ignore & leave
+                    }
+                });
+            }
+        };
+
+        $(document).ready(function(){
+            module.init();
+        });
     });
 </script>
             <?php
@@ -1098,40 +1099,44 @@ var <?php echo self::MODULE_VARNAME;?> = (function(window, document, $, app_path
 
         /**
          * redcap_every_page_before_render
+         * - When saving an instance in the popup, preserve the info that we're in the instance table popup so can render new form in this view.
          * - When doing Save & Exit or Delete Instance from popup then persist a flag on the session so can close popup on record home page.
-         * - If adding a new instance, read the current max instance and redirect to a form with instance value current + 1
+         * - If adding a new instance, read the current max instance and redirect to a form with instance value current + 1 (can't just use &new due to internal redirect)
          * @param type $project_id
          */
         public function redcap_every_page_before_render($project_id) {
-                if (isset($_POST['extmod_closerec_home'])) {
-                        $_SESSION['extmod_closerec_home'] = $_POST['extmod_closerec_home'];
+            if (isset($_POST['extmod_instance_table_popup_save'])) {
+                $_SESSION['extmod_instance_table_popup_save'] = $_POST['extmod_instance_table_popup_save'];
+            }
+            if (isset($_POST['extmod_instance_table_closerec_home'])) {
+                $_SESSION['extmod_instance_table_closerec_home'] = $_POST['extmod_instance_table_closerec_home'];
+            }
+            if (PAGE==='DataEntry/index.php' && isset($_GET['extmod_instance_table']) && isset($_GET['extmod_instance_table_add_new']) && !is_null($project_id) && isset(($_GET['event_id']))) {
+                global $Proj;
+                $this->Proj = $Proj;
+                $this->isSurvey = false;
+                // adding new instance - read current max and redirect to + 1
+                $formKey = ($this->Proj->isRepeatingEvent($_GET['event_id']))
+                        ? ''             // repeating event - empty string key
+                        : $_GET['page']; // repeating form  - form name key
 
-                } else if (PAGE==='DataEntry/index.php' && isset($_GET['extmod_instance_table']) && isset($_GET['extmod_instance_table_add_new']) && !is_null($project_id) && isset(($_GET['event_id']))) {
-                        global $Proj;
-                        $this->Proj = $Proj;
-                        $this->isSurvey = false;
-                        // adding new instance - read current max and redirect to + 1
-                        $formKey = ($this->Proj->isRepeatingEvent($_GET['event_id']))
-                                ? ''             // repeating event - empty string key
-                                : $_GET['page']; // repeating form  - form name key
+                $recordData = REDCap::getData([
+                    'return_format' => 'array',
+                    'records' => $_GET['id'],
+                    'forms' => $_GET['page'].'_complete',
+                    'events' => $_GET['event_id'],
+                ]);
 
-                        $recordData = REDCap::getData([
-                            'return_format' => 'array',
-                            'records' => $_GET['id'],
-                            'forms' => $_GET['page'].'_complete',
-                            'events' => $_GET['event_id'],
-                        ]);
-
-                        if (array_key_exists($_GET['id'],$recordData) &&
-                            array_key_exists('repeat_instances',$recordData[$_GET['id']]) &&
-                            array_key_exists($_GET['event_id'], $recordData[$_GET['id']]['repeat_instances']) &&
-                            array_key_exists($formKey, $recordData[$_GET['id']]['repeat_instances'][$_GET['event_id']]) ) {
-                                $currentInstances = array_keys($recordData[$_GET['id']]['repeat_instances'][$_GET['event_id']][$formKey]);
-                                $_GET['instance'] = (is_null($currentInstances)) ? 1 : 1 + end($currentInstances);
-                        } else {
-                                $_GET['instance'] = 1;
-                        }
-                } 
+                if (array_key_exists($_GET['id'],$recordData) &&
+                        array_key_exists('repeat_instances',$recordData[$_GET['id']]) &&
+                        array_key_exists($_GET['event_id'], $recordData[$_GET['id']]['repeat_instances']) &&
+                        array_key_exists($formKey, $recordData[$_GET['id']]['repeat_instances'][$_GET['event_id']]) ) {
+                    $currentInstances = array_keys($recordData[$_GET['id']]['repeat_instances'][$_GET['event_id']][$formKey]);
+                    $_GET['instance'] = (is_null($currentInstances)) ? 1 : 1 + end($currentInstances);
+                } else {
+                    $_GET['instance'] = 1;
+                }
+            }
         }
 
         /**

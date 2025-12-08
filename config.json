@@ -8,7 +8,7 @@
             "institution": "Murdoch Children's Research Institute"
         }
     ],
-    "description": "Use the action tag <code>@INSTANCETABLE=form_name</code> in a descriptive text field to include a table showing data from repeat instances of that form.<br>If project is longitudinal, use <code>@INSTANCETABLE=event_name:form_name</code> to specify the event and form (can be a repeating form or a form in a repeating event).<br>Other action tags are available for controlling cetain properties of te tables and their contents.",
+    "description": "Use the action tag <code>@INSTANCETABLE=form_name</code> in a descriptive text field to include a table showing data from repeat instances of that form.<br>If project is longitudinal, use <code>@INSTANCETABLE=event_name:form_name</code> to specify the event and form (can be a repeating form or a form in a repeating event).<br>Other action tags are available for controlling certain properties of the tables and their contents.",
     "framework-version": 15,
     "auth-ajax-actions": [ "get-data" ],
     "action-tags": [
@@ -39,6 +39,10 @@
         {
             "tag": "@INSTANCETABLE-PAGESIZE",
             "description": "Override default choices for page sizing: specify integer default page size, or -1 for 'All'"
+        },
+        {
+            "tag": "@INSTANCETABLE-SCROLLX",
+            "description": "Default behaviour is for a wide table to cause its container to grow. Use this tag to get a horizontal scroll-bar instead."
         },
         {
             "tag": "@INSTANCETABLE-REF",
