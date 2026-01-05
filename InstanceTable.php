@@ -460,18 +460,26 @@ class InstanceTable extends AbstractExternalModule
                 $nColumns = 1; // start at 1 for # (Instance) column
                 $html = '<div class="" style="margin-top:10px; margin-bottom:'.self::ADD_NEW_BTN_YSHIFT.';">';
                 $html .= '<table id="'.$tableElementId.'" class="table table-striped table-bordered table-condensed table-responsive '.self::MODULE_VARNAME.' '.$tableFormClass.'" width="100%" cellspacing="0" style="'.$scrollStyle.'">';
-                $html .= '<thead><tr><th>#</th>'; // .$this->lang['data_entry_246'].'</th>'; // Instance
+                $html .= '<thead><tr><th><span class="th-instance">#</span></th>'; // .$this->lang['data_entry_246'].'</th>'; // Instance
                 
                 $repeatingFormFields = REDCap::getDataDictionary('array', false, null, $formName);
 
                 foreach ($varList as $var) {
                         $relabel = preg_match("/".self::ACTION_TAG_LABEL."='(.+)'/", $repeatingFormFields[$var]['field_annotation'], $matches);
                         $colHeader = ($relabel) ? $matches[1] : $repeatingFormFields[$var]['field_label'];
-                        $html .= "<th>$colHeader</th>";
+
+                        $colHeader = \Piping::replaceVariablesInLabel(
+                            $colHeader,
+                            $this->record,
+                            $this->event_id,
+                            $this->instance
+                        );
+
+                        $html .= "<th><span class=\"th-field\">$colHeader</span></th>";
                         $nColumns++;
                 }
                 if (!$hideFormStatus) {
-                        $html.='<th>Form Status</th>'; // "Form Status" wording is hardcoded in MetaData::save_metadata()
+                        $html.='<th><span class="th-status">Form Status</span></th>'; // "Form Status" wording is hardcoded in MetaData::save_metadata()
                         $nColumns++;
                 }
                 
@@ -1060,6 +1068,17 @@ var <?php echo self::MODULE_VARNAME;?> = (function(window, document, $, app_path
                     window.close();
                 });
                 
+            // add &extmod_instance_table=1 to link in onclick of "Edit response" button where instance is a survey response to maintain the "in popup" settings
+            var editSurveyBtn = $('#edit-response-btn');
+            if (editSurveyBtn.length) {
+                $(editSurveyBtn)
+                    .removeAttr('onclick')
+                    .click(function() {
+                        window.location.href = app_path_webroot+'DataEntry/index.php?pid='+getParameterByName('pid')+'&page='+getParameterByName('page')+'&id='+getParameterByName('id')+'&event_id='+event_id+(getParameterByName('instance')==''?'':'&instance='+getParameterByName('instance'))+'&editresp=1&extmod_instance_table=1';
+                        return false;
+                    });
+            }
+
             if (module.addingNewInstance) {
                 $('#__DELETEBUTTONS__-div').css("display", "none");
             } else {
