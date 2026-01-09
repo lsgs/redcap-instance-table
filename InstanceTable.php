@@ -1018,7 +1018,7 @@ var <?php echo self::MODULE_VARNAME;?> = (function(window, document, $, app_path
             window.onunload = function(){window.opener.refreshTables();};
             $('#form').attr('action',$('#form').attr('action')+'&extmod_instance_table=1');
             $('#form').append('<input type="hidden" name="extmod_instance_table_closerec_home" value="<?=$record?>">');
-            $('#form').append('<input type="hidden" name="extmod_instance_table_popup_save" value="<?=$record?>">>');
+            $('#form').append('<input type="hidden" name="extmod_instance_table_popup_save" value="<?=$record?>">');
 
             // suppress display of header links to other instances
             let currentDisplayDiv = $('#inviteFollowupSurveyBtn > div:first');
