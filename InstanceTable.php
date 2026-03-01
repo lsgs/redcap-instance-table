@@ -68,13 +68,13 @@ class InstanceTable extends AbstractExternalModule
                         ?>
                         <script type="text/javascript">/* EM Instance Table */ window.close();</script>
                         <?php
-
+                        unset($_SESSION['extmod_instance_table_closerec_home']);
                 } else if (PAGE==='DataEntry/index.php' && isset($_GET['id']) && isset($_SESSION['extmod_instance_table_popup_save']) && $_GET['id']==$_SESSION['extmod_instance_table_popup_save']) {
                         ?>
                         <script type="text/javascript">/* EM Instance Table */ window.location.href = window.location.href+'&extmod_instance_table=1';</script>
                         <?php
                 }
-                unset($_SESSION['extmod_instance_table_closerec_home']);
+                
                 unset($_SESSION['extmod_instance_table_popup_save']);
                 
                 if (PAGE==='DataEntry/index.php' && isset($_GET['id']) && isset($_GET['page'])) {
