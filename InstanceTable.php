@@ -912,7 +912,7 @@ var <?php echo self::MODULE_VARNAME;?> = (function(window, document, $, app_path
         addNewInstance: function(record, event, form, tblFld, linkFld, linkIns) {
             var ref = (linkFld=='')?'':'&link_field='+linkFld+'&link_instance='+linkIns;
             var prefill = getPrefillParams(tblFld);
-            instancePopup('Add instance', record, event, form, '1&extmod_instance_table_add_new=1'+ref+prefill);
+            instancePopup('Add instance', record, event, form, 'new&extmod_instance_table_add_new=1'+ref+prefill);
             return false;
         },
         editInstance: function(record, event, form, instance) {
@@ -1033,6 +1033,11 @@ var <?php echo self::MODULE_VARNAME;?> = (function(window, document, $, app_path
                     $(linkInput).val(module.urlGetParam('link_instance'));
                 }
             }
+
+            // update url instance param with correct instance number (for new)
+            const url = new URL(window.location.href);
+            url.searchParams.set('instance', '<?= intval($_GET['instance']) ?>');
+            window.history.replaceState(null, '', url);
 
             // changes to save/cancel/delete buttons in popup window
             $('button[name=submit-btn-saverecord]')// Save & Exit Form (here means save and close the popup)
