@@ -176,7 +176,7 @@ class InstanceTable extends AbstractExternalModule
                         // Group 2.	20-30	eee_arm_1:
                         if ($fieldDetails['field_type']!=='descriptive') continue;
                         
-                        $fieldDetails['field_annotation'] = \Form::replaceIfActionTag($fieldDetails['field_annotation'], $this->Proj->project_id, $this->record, $this->event_id, $this->instrument, $this->instance);
+                        $fieldDetails['field_annotation'] = \Form::replaceIfActionTag($fieldDetails['field_annotation'], $this->Proj->project_id, $this->record, $this->event_id, $this->instrument, $this->instance ?? 1);
             
                         if (preg_match("/".self::ACTION_TAG."\s*=\s*'?((\w+_arm_\d+[a-z]?:)?\w+)'?\s?/", $fieldDetails['field_annotation'], $matches)) {
 
